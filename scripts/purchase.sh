@@ -16,17 +16,27 @@ date "+%Y-%m-%d %H:%M:%S"
 echo ""
 
 # Send start notification
-"$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" start
+"$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" start || true
 
 # Step 1: Check balance
 echo "💰 Checking balance..."
-BALANCE_OUTPUT=$("$VENV_PYTHON" "$PROJECT_DIR/src/balance.py" 2>&1)
+if ! BALANCE_OUTPUT=$("$VENV_PYTHON" "$PROJECT_DIR/src/balance.py" 2>&1); then
+    echo "❌ Error: Failed to check balance"
+    echo "Error output:"
+    echo "$BALANCE_OUTPUT"
+    "$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" error "Failed to check balance: $BALANCE_OUTPUT" || true
+    exit 1
+fi
+
 echo "$BALANCE_OUTPUT"
 
 AVAILABLE_AMOUNT=$(echo "$BALANCE_OUTPUT" | grep -oE '[0-9,]+원' | tail -n 1 | tr -d '원,')
 
 if [ -z "$AVAILABLE_AMOUNT" ]; then
     echo "❌ Error: Could not parse available amount"
+    echo "Full output was:"
+    echo "$BALANCE_OUTPUT"
+    "$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" error "Could not parse available amount" || true
     exit 1
 fi
 
