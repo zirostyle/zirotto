@@ -254,7 +254,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         total_games = len(manual_numbers) + auto_games
         if total_games == 0:
             print('⚠️  No games to purchase!')
-            return
+            return {'games': 0, 'total_cost': 0, 'numbers': []}
 
         # Verify payment amount
         time.sleep(1)
@@ -265,7 +265,32 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         
         if payment_amount != expected_amount:
             print(f'❌ Error: Payment mismatch (Expected {expected_amount}, Displayed {payment_amount})')
-            return
+            return {'games': 0, 'total_cost': 0, 'numbers': []}
+        
+        # 구매 전 번호 추출 (화면에서 보이는 번호 저장)
+        purchased_numbers = []
+        try:
+            # 선택된 번호들 추출
+            number_display = page.locator(".select_num, .num_box, [class*='selected']")
+            for i in range(min(total_games, 10)):  # 최대 10게임
+                try:
+                    game_el = number_display.nth(i)
+                    if game_el.count() > 0:
+                        text = game_el.inner_text()
+                        numbers = re.findall(r'\d+', text)
+                        if len(numbers) >= 6:
+                            purchased_numbers.append([int(n) for n in numbers[:6]])
+                except:
+                    pass
+            
+            # 수동 번호는 이미 알고 있음
+            if manual_numbers:
+                purchased_numbers = manual_numbers + purchased_numbers
+        except Exception as e:
+            print(f"⚠️ 번호 추출 실패: {e}")
+            # 수동 번호만이라도 포함
+            if manual_numbers:
+                purchased_numbers = manual_numbers
         
         # Purchase
         page.click("#btnBuy")
@@ -292,8 +317,15 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             return
 
         print(f'✅ Lotto 6/45: All {total_games} games purchased successfully!')
-        notify_lotto645_purchase(auto_games, len(manual_numbers), True)
-        return {'games': total_games, 'total_cost': total_games * 1000}
+        
+        # 구매한 번호 출력
+        if purchased_numbers:
+            print("\n구매한 번호:")
+            for i, nums in enumerate(purchased_numbers, 1):
+                print(f"  {i}. {' '.join([f'{n:02d}' for n in sorted(nums)])}")
+        
+        notify_lotto645_purchase(auto_games, len(manual_numbers), True, numbers=purchased_numbers)
+        return {'games': total_games, 'total_cost': total_games * 1000, 'numbers': purchased_numbers}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")
