@@ -4,6 +4,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
+from telegram_notifier import notify_balance
 
 # .env loading is handled by login module import
 
@@ -62,6 +63,9 @@ def run(playwright: Playwright) -> dict:
         # Print results in a clean format
         print(f"💰 예치금 잔액: {balance_info['deposit_balance']:,}원")
         print(f"🛒 구매가능: {balance_info['available_amount']:,}원")
+        
+        # Send telegram notification
+        notify_balance(balance_info['deposit_balance'], balance_info['available_amount'])
         
         return balance_info
         

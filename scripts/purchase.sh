@@ -15,6 +15,9 @@ echo "========================================"
 date "+%Y-%m-%d %H:%M:%S"
 echo ""
 
+# Send start notification
+"$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" start
+
 # Step 1: Check balance
 echo "💰 Checking balance..."
 BALANCE_OUTPUT=$("$VENV_PYTHON" "$PROJECT_DIR/src/balance.py" 2>&1)
@@ -45,3 +48,6 @@ echo "🎫 Buying Lotto 645..."
 echo ""
 echo "✅ All tasks completed successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Send completion notification
+"$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" complete

@@ -8,6 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
+from telegram_notifier import notify_lotto645_purchase
 
 # .env loading is handled by login module import
 
@@ -196,14 +197,24 @@ def run(playwright: Playwright, auto_games: int, manual_numbers: list) -> None:
         # 1. Check for specific limit exceeded recommendation popup
         limit_popup = page.locator("#recommend720Plus")
         if limit_popup.is_visible():
-            print("❌ Error: Weekly purchase limit exceeded (detected limit popup).")
+            error_msg = "Weekly purchase limit exceeded"
+            print(f"❌ Error: {error_msg}")
             # Try to find error message inside
-            content = limit_popup.locator(".cont1").inner_text()
-            print(f"   Message: {content.strip()}")
+            try:
+                content = limit_popup.locator(".cont1").inner_text()
+                print(f"   Message: {content.strip()}")
+            except:
+                pass
+            notify_lotto645_purchase(auto_games, len(manual_numbers), False, error_msg)
             return
 
         print(f'✅ Lotto 6/45: All {total_games} games purchased successfully!')
+        notify_lotto645_purchase(auto_games, len(manual_numbers), True)
 
+    except Exception as e:
+        print(f"❌ Error during purchase: {e}")
+        notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, str(e))
+        raise
     finally:
         # Cleanup
         context.close()

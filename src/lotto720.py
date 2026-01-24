@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
+from telegram_notifier import notify_lotto720_purchase
 
 # .env loading is handled by login module import
 
@@ -154,10 +155,13 @@ def run(playwright: Playwright) -> None:
         
         time.sleep(2)
         print("✅ Lotto 720: All sets purchased successfully!")
-        
+        notify_lotto720_purchase(True)
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        error_msg = str(e)
+        print(f"An error occurred: {error_msg}")
+        notify_lotto720_purchase(False, error_msg)
+        raise
     finally:
         # Cleanup
         context.close()

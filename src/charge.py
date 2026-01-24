@@ -7,6 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
+from telegram_notifier import notify_charge
 
 # .env loading is handled by login module import
 
@@ -196,10 +197,13 @@ def run(playwright: Playwright, amount: int):
         success = charge_deposit(page, amount)
         if success:
             print("✅ Charge completed successfully!")
+            notify_charge(amount, True)
         else:
             print("❌ Charge failed.")
+            notify_charge(amount, False)
     except Exception as e:
         print(f"An error occurred: {e}")
+        notify_charge(amount, False)
     finally:
         context.close()
         browser.close()
