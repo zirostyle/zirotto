@@ -25,6 +25,14 @@ def purchase_lotto720(page) -> dict:
     """
 
     try:
+        # Set extra HTTP headers to prevent mobile redirection
+        page.set_extra_http_headers({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Referer": "https://www.dhlottery.co.kr/",
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"'
+        })
+        
         # Navigate to the Wrapper Page (TotalGame.jsp) which handles session sync correctly
         print("🚀 Navigating to Lotto 720 Wrapper page...")
         page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=60000, wait_until="domcontentloaded")
