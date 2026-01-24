@@ -105,6 +105,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     Returns:
         dict: {'games': int, 'total_cost': int}
     """
+    from datetime import datetime, timezone, timedelta
+    
     if manual_numbers is None:
         manual_numbers = []
     
@@ -112,6 +114,26 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     if auto_games == 0 and len(manual_numbers) == 0:
         auto_games = int(environ.get('AUTO_GAMES', '5'))
         manual_numbers = json.loads(environ.get('MANUAL_NUMBERS', '[]'))
+    
+    # Check if purchase is available (Korean time)
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    day_of_week = now.weekday()  # 0=월요일, 6=일요일
+    hour = now.hour
+    
+    # 일요일 전체 구매 불가
+    if day_of_week == 6:
+        raise Exception("❌ 구매 불가: 일요일에는 로또를 구매할 수 없습니다.")
+    
+    # 토요일 20:00-24:00 구매 불가 (추첨 시간)
+    if day_of_week == 5 and hour >= 20:
+        raise Exception("❌ 구매 불가: 추첨 시간(토요일 20:00-24:00)에는 구매할 수 없습니다.")
+    
+    # 평일 06:00-24:00 외 시간 구매 불가
+    if hour < 6:
+        raise Exception(f"❌ 구매 불가: 06:00부터 구매 가능합니다. (현재 {hour:02d}시)")
+    
+    print(f"✅ 구매 가능 시간: {now.strftime('%Y-%m-%d %H:%M:%S')} (KST)")
     
     try:
 
