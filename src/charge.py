@@ -124,6 +124,21 @@ def parse_keypad(page: Page) -> dict:
 
     return number_map
 
+def charge_balance(page: Page, amount: int) -> bool:
+    """
+    [간편충전] 기능을 사용하여 예치금을 충전합니다.
+    (Alias for charge_deposit - 통합 스크립트에서 사용)
+    
+    Args:
+        page: 로그인된 Playwright Page 객체
+        amount: 충전할 금액 (5000, 10000, 20000 중 하나)
+        
+    Returns:
+        bool: 충전 요청 성공 여부
+    """
+    return charge_deposit(page, amount)
+
+
 def charge_deposit(page: Page, amount: int) -> bool:
     """
     [간편충전] 기능을 사용하여 예치금을 충전합니다.

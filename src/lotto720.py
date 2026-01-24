@@ -12,21 +12,17 @@ from telegram_notifier import notify_lotto720_purchase
 # .env loading is handled by login module import
 
 
-def run(playwright: Playwright) -> None:
+def purchase_lotto720(page) -> dict:
     """
-    연금복권 720+를 구매합니다.
+    연금복권 720+를 구매합니다 (이미 로그인된 페이지 사용).
     '모든 조'를 선택하여 임의의 번호로 5매(5,000원)를 구매합니다.
     
     Args:
-        playwright: Playwright 객체
+        page: 이미 로그인된 Playwright Page 객체
+        
+    Returns:
+        dict: {'games': 5, 'total_cost': 5000}
     """
-    # Create browser, context, and page
-    browser = playwright.chromium.launch(headless=True)
-    context = browser.new_context()
-    page = context.new_page()
-    
-    # Perform login using injected page
-    login(page)
 
     try:
         # Navigate to the Wrapper Page (TotalGame.jsp) which handles session sync correctly
@@ -156,12 +152,32 @@ def run(playwright: Playwright) -> None:
         time.sleep(2)
         print("✅ Lotto 720: All sets purchased successfully!")
         notify_lotto720_purchase(True)
+        return {'games': 5, 'total_cost': 5000}
 
     except Exception as e:
         error_msg = str(e)
         print(f"An error occurred: {error_msg}")
         notify_lotto720_purchase(False, error_msg)
         raise
+
+
+def run(playwright: Playwright) -> None:
+    """
+    연금복권 720+를 구매합니다 (독립 실행용).
+    
+    Args:
+        playwright: Playwright 객체
+    """
+    # Create browser, context, and page
+    browser = playwright.chromium.launch(headless=True)
+    context = browser.new_context()
+    page = context.new_page()
+    
+    try:
+        # Perform login
+        login(page)
+        # Purchase
+        purchase_lotto720(page)
     finally:
         # Cleanup
         context.close()

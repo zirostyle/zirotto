@@ -93,23 +93,27 @@ def parse_arguments():
         sys.exit(1)
 
 
-def run(playwright: Playwright, auto_games: int, manual_numbers: list) -> None:
+def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:
     """
-    로또 6/45를 자동 및 수동으로 구매합니다.
+    로또 6/45를 자동 및 수동으로 구매합니다 (이미 로그인된 페이지 사용).
     
     Args:
-        playwright: Playwright 객체
+        page: 이미 로그인된 Playwright Page 객체
         auto_games: 자동 구매 게임 수
         manual_numbers: 수동 구매 번호 리스트 (예: [[1,2,3,4,5,6], ...])
+        
+    Returns:
+        dict: {'games': int, 'total_cost': int}
     """
-    # Create browser, context, and page
-    browser = playwright.chromium.launch(headless=True)
-    context = browser.new_context()
-    page = context.new_page()
+    if manual_numbers is None:
+        manual_numbers = []
     
-    # Perform login
+    # Load from env if not provided
+    if auto_games == 0 and len(manual_numbers) == 0:
+        auto_games = int(environ.get('AUTO_GAMES', '5'))
+        manual_numbers = json.loads(environ.get('MANUAL_NUMBERS', '[]'))
+    
     try:
-        login(page)
 
         # Navigate to game page
         page.goto(url="https://ol.dhlottery.co.kr/olotto/game/game645.do", timeout=30000, wait_until="domcontentloaded")
@@ -210,11 +214,33 @@ def run(playwright: Playwright, auto_games: int, manual_numbers: list) -> None:
 
         print(f'✅ Lotto 6/45: All {total_games} games purchased successfully!')
         notify_lotto645_purchase(auto_games, len(manual_numbers), True)
+        return {'games': total_games, 'total_cost': total_games * 1000}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")
         notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, str(e))
         raise
+
+
+def run(playwright: Playwright, auto_games: int, manual_numbers: list) -> None:
+    """
+    로또 6/45를 자동 및 수동으로 구매합니다 (독립 실행용).
+    
+    Args:
+        playwright: Playwright 객체
+        auto_games: 자동 구매 게임 수
+        manual_numbers: 수동 구매 번호 리스트 (예: [[1,2,3,4,5,6], ...])
+    """
+    # Create browser, context, and page
+    browser = playwright.chromium.launch(headless=True)
+    context = browser.new_context()
+    page = context.new_page()
+    
+    # Perform login
+    try:
+        login(page)
+        # Purchase
+        purchase_lotto645(page, auto_games, manual_numbers)
     finally:
         # Cleanup
         context.close()
