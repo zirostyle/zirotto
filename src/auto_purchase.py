@@ -58,10 +58,20 @@ def run_all_tasks(playwright: Playwright) -> None:
         print("🎫 로또 645 구매 중...")
         print("="*50)
         
-        result_645 = purchase_lotto645(page)
-        print("✅ 로또 645 구매 완료!")
+        try:
+            result_645 = purchase_lotto645(page)
+            print("✅ 로또 645 구매 완료!")
+        except Exception as e:
+            error_msg = str(e)
+            if "구매 불가" in error_msg or "구매.*시간" in error_msg:
+                print(f"⏭️  {error_msg}")
+                print("   (정상적인 구매 불가 시간대입니다)")
+                # 구매 불가 시간은 에러가 아님
+            else:
+                # 실제 에러인 경우만 다시 발생
+                raise
         
-        # Step 5: Buy Lotto 720 (645 성공 후 시도)
+        # Step 5: Buy Lotto 720 (645 후 시도)
         print("\n" + "="*50)
         print("🎫 로또 720 구매 중...")
         print("="*50)
@@ -70,7 +80,11 @@ def run_all_tasks(playwright: Playwright) -> None:
             result_720 = purchase_lotto720(page)
             print("✅ 로또 720 구매 완료!")
         except Exception as e:
-            print(f"⚠️ 로또 720 구매 실패 (건너뛰기): {e}")
+            error_msg = str(e)
+            if "구매 불가" in error_msg:
+                print(f"⏭️  {error_msg}")
+            else:
+                print(f"⚠️ 로또 720 구매 실패: {e}")
             # 로또720 실패해도 계속 진행
         
         print("\n" + "="*50)
