@@ -144,6 +144,29 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         # Wait for page to be fully loaded
         page.wait_for_load_state("networkidle")
         
+        # Check if page shows "구매불가" message
+        try:
+            # Common selectors for purchase unavailable messages
+            unavailable_messages = [
+                "text=/구매.*불가/",
+                "text=/판매.*중지/",
+                "text=/구매.*시간/",
+                ".alert",
+                ".notice"
+            ]
+            
+            for selector in unavailable_messages:
+                try:
+                    msg_el = page.locator(selector).first
+                    if msg_el.is_visible(timeout=2000):
+                        msg_text = msg_el.inner_text()
+                        raise Exception(f"❌ 구매 불가: {msg_text}")
+                except:
+                    pass
+        except Exception as e:
+            if "구매 불가" in str(e):
+                raise
+        
         # Remove all intercepting pause layer popups using JavaScript
         # These elements block clicks even when they're not supposed to be visible
         page.evaluate("""
@@ -192,12 +215,16 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             page.screenshot(path="debug_lotto645.png")
             print("📸 로또645 페이지 스크린샷 저장")
             
-            # Try multiple selectors for the auto number button
+            # Wait and try multiple selectors for the auto number button
+            time.sleep(2)  # Wait for page interactions
+            
             auto_button_selectors = [
                 "#num2",
+                "input#num2",
                 "input[name='num2']",
-                "input[value='자동']",
+                "input[type='radio'][value='2']",
                 "label[for='num2']",
+                "text=/자동/",
                 ".select_auto"
             ]
             
