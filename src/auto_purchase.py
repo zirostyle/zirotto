@@ -58,11 +58,14 @@ def run_all_tasks(playwright: Playwright) -> None:
             print(f"💳 잔액 부족 (₩{balance_info['available_amount']:,}). ₩{CHARGE_AMOUNT:,} 충전 중...")
             print("="*50)
             
-            charge_balance(page, CHARGE_AMOUNT)
-            print(f"✅ 충전 완료!")
-            
-            # Send charge notification
-            notify_charge(CHARGE_AMOUNT)
+            try:
+                charge_balance(page, CHARGE_AMOUNT)
+                print(f"✅ 충전 완료!")
+                notify_charge(CHARGE_AMOUNT, True)
+            except Exception as e:
+                print(f"⚠️ 충전 실패 (현재 잔액으로 계속 진행): {e}")
+                notify_charge(CHARGE_AMOUNT, False)
+                # 충전 실패해도 현재 잔액으로 계속 진행
         else:
             print(f"\n✅ 잔액 충분 (₩{balance_info['available_amount']:,})")
         
