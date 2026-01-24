@@ -1,0 +1,40 @@
+name: Check Lotto Results (Sunday 8AM)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매주 일요일 오전 8:00 KST (UTC 토요일 23:00)
+    - cron: '0 23 * * 6'
+
+jobs:
+  check-results:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install Python Dependencies
+      run: |
+        pip install -r requirements.txt
+        playwright install chromium
+        playwright install-deps chromium
+
+    - name: Create .env file
+      run: |
+        echo "USER_ID=${{ secrets.USER_ID }}" >> .env
+        echo "PASSWD=${{ secrets.PASSWD }}" >> .env
+        echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+        echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+
+    - name: Check Lotto Results
+      env:
+        PYTHONPATH: src
+      run: |
+        python src/check_results.py
