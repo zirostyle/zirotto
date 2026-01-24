@@ -27,29 +27,60 @@ def purchase_lotto720(page) -> dict:
     try:
         # Navigate to the Wrapper Page (TotalGame.jsp) which handles session sync correctly
         print("🚀 Navigating to Lotto 720 Wrapper page...")
-        page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=30000, wait_until="domcontentloaded")
+        page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=60000, wait_until="domcontentloaded")
+        
+        # Wait for page to fully load
+        page.wait_for_load_state("networkidle", timeout=30000)
+        time.sleep(3)
+        
+        # Take screenshot for debugging
+        page.screenshot(path="debug_lotto720_page.png")
+        print("📸 로또720 페이지 스크린샷 저장")
         
         # Access the game iframe
         # The actual game UI is loaded inside this iframe
         print("Waiting for game iframe to load...")
         # Wait for the iframe element to be visible on the main page
         try:
+            page.locator("#ifrm_tab").wait_for(state="attached", timeout=20000)
             page.locator("#ifrm_tab").wait_for(state="visible", timeout=10000)
-        except Exception:
-            print("⚠️ Iframe #ifrm_tab not visible. Page source might be different.")
-        
-        frame = page.frame_locator("#ifrm_tab")
+            print("✅ Found iframe #ifrm_tab")
+        except Exception as e:
+            print(f"⚠️ Iframe #ifrm_tab not found: {e}")
+            print("📍 Current URL:", page.url)
+            
+            # Save HTML for debugging
+            with open("debug_lotto720_page.html", "w", encoding="utf-8") as f:
+                f.write(page.content())
+            print("📄 HTML 저장: debug_lotto720_page.html")
+            
+            # Try alternative: check if we're already on the game page directly
+            if "game720.jsp" in page.url.lower():
+                print("✅ Already on game page directly (no iframe)")
+                frame = page
+            else:
+                raise Exception("Iframe not found and not on direct game page")
+        else:
+            frame = page.frame_locator("#ifrm_tab")
         
         # Wait for an element inside the frame explicitly to ensure it's ready
-        try:
-             # Wait for either the hidden balance input OR the visible balance text
-             # This makes it robust if one is missing or slow
-             frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
-        except Exception:
-             print("⚠️ Timeout waiting for iframe content. Retrying navigation...")
-             page.reload()
-             page.locator("#ifrm_tab").wait_for(state="visible", timeout=10000)
-             frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
+        if isinstance(frame, type(page)):
+            # We're on the direct page, not in an iframe
+            print("✅ Using direct page (no iframe)")
+        else:
+            # We're in an iframe
+            try:
+                 # Wait for either the hidden balance input OR the visible balance text
+                 # This makes it robust if one is missing or slow
+                 frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
+            except Exception as e:
+                 print(f"⚠️ Timeout waiting for iframe content: {e}")
+                 print("Trying page reload...")
+                 page.reload(wait_until="networkidle", timeout=30000)
+                 time.sleep(3)
+                 page.locator("#ifrm_tab").wait_for(state="visible", timeout=10000)
+                 frame = page.frame_locator("#ifrm_tab")
+                 frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
 
         print('✅ Navigated to Lotto 720 Game Frame')
         
