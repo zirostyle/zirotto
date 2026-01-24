@@ -64,7 +64,7 @@ def notify_charge(amount: int, success: bool = True):
     send_telegram_message(message)
 
 
-def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, error_msg: str = None):
+def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, error_msg: str = None, numbers: list = None):
     """로또 6/45 구매 알림"""
     total_games = auto_games + manual_games
     total_amount = total_games * 1000
@@ -76,6 +76,13 @@ def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, 
         if manual_games > 0:
             message += f"수동: {manual_games}게임\n"
         message += f"\n총 금액: {total_amount:,}원"
+        
+        # 구매한 번호 추가
+        if numbers and len(numbers) > 0:
+            message += "\n\n<b>구매 번호:</b>\n"
+            for i, nums in enumerate(numbers, 1):
+                sorted_nums = sorted(nums)
+                message += f"{i}. " + " ".join([f"{n:02d}" for n in sorted_nums]) + "\n"
     else:
         message = "❌ <b>로또 6/45 구매 실패</b>\n\n"
         if error_msg:
@@ -84,15 +91,46 @@ def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, 
     send_telegram_message(message)
 
 
-def notify_lotto720_purchase(success: bool, error_msg: str = None):
+def notify_lotto720_purchase(success: bool, error_msg: str = None, numbers: str = None):
     """연금복권 720+ 구매 알림"""
     if success:
         message = "🎟️ <b>연금복권 720+ 구매 완료</b>\n\n"
         message += "금액: 5,000원"
+        if numbers:
+            message += f"\n\n<b>구매 번호:</b>\n{numbers}"
     else:
         message = "❌ <b>연금복권 720+ 구매 실패</b>\n\n"
         if error_msg:
             message += f"오류: {error_msg}"
+    
+    send_telegram_message(message)
+
+
+def notify_lotto_result(round_num: int, winning_numbers: list, bonus: int, prizes: dict):
+    """로또 당첨 결과 알림
+    
+    Args:
+        round_num: 회차
+        winning_numbers: 당첨 번호 리스트 [1,2,3,4,5,6]
+        bonus: 보너스 번호
+        prizes: 당첨 내역 {'1등': 금액, '2등': 금액, ...}
+    """
+    message = f"🎰 <b>로또 {round_num}회 추첨 결과</b>\n\n"
+    
+    # 당첨 번호
+    message += "<b>당첨 번호:</b>\n"
+    message += " ".join([f"{n:02d}" for n in sorted(winning_numbers)])
+    message += f" + <b>{bonus:02d}</b> (보너스)\n\n"
+    
+    # 당첨 내역
+    if prizes and any(prizes.values()):
+        message += "<b>🎉 당첨 내역:</b>\n"
+        for rank, amount in prizes.items():
+            if amount > 0:
+                message += f"{rank}: {amount:,}원\n"
+    else:
+        message += "아쉽게도 당첨되지 않았습니다.\n"
+        message += "다음 기회에 도전하세요! 💪"
     
     send_telegram_message(message)
 
