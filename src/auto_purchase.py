@@ -66,21 +66,25 @@ def run_all_tasks(playwright: Playwright) -> None:
         else:
             print(f"\n✅ 잔액 충분 (₩{balance_info['available_amount']:,})")
         
-        # Step 4: Buy Lotto 720
-        print("\n" + "="*50)
-        print("🎫 로또 720 구매 중...")
-        print("="*50)
-        
-        result_720 = purchase_lotto720(page)
-        print("✅ 로또 720 구매 완료!")
-        
-        # Step 5: Buy Lotto 645
+        # Step 4: Buy Lotto 645 (먼저 시도)
         print("\n" + "="*50)
         print("🎫 로또 645 구매 중...")
         print("="*50)
         
         result_645 = purchase_lotto645(page)
         print("✅ 로또 645 구매 완료!")
+        
+        # Step 5: Buy Lotto 720 (645 성공 후 시도)
+        print("\n" + "="*50)
+        print("🎫 로또 720 구매 중...")
+        print("="*50)
+        
+        try:
+            result_720 = purchase_lotto720(page)
+            print("✅ 로또 720 구매 완료!")
+        except Exception as e:
+            print(f"⚠️ 로또 720 구매 실패 (건너뛰기): {e}")
+            # 로또720 실패해도 계속 진행
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
