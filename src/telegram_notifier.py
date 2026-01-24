@@ -53,7 +53,7 @@ def notify_balance(deposit: int, available: int):
     send_telegram_message(message)
 
 
-def notify_charge(amount: int, success: bool):
+def notify_charge(amount: int, success: bool = True):
     """충전 알림"""
     if success:
         message = f"💳 <b>예치금 충전 완료</b>\n\n"

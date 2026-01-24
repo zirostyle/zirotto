@@ -8,7 +8,7 @@ import re
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
 from balance import get_balance
-from telegram_notifier import notify_balance, notify_charge, notify_purchase
+from telegram_notifier import notify_balance, notify_charge, notify_lotto720_purchase, notify_lotto645_purchase
 
 # Import charge and purchase functions
 from charge import charge_balance
@@ -69,9 +69,6 @@ def run_all_tasks(playwright: Playwright) -> None:
         result_720 = purchase_lotto720(page)
         print("✅ 로또 720 구매 완료!")
         
-        # Send purchase notification
-        notify_purchase("로또720", result_720.get('games', 1), result_720.get('total_cost', 5000))
-        
         # Step 5: Buy Lotto 645
         print("\n" + "="*50)
         print("🎫 로또 645 구매 중...")
@@ -79,9 +76,6 @@ def run_all_tasks(playwright: Playwright) -> None:
         
         result_645 = purchase_lotto645(page)
         print("✅ 로또 645 구매 완료!")
-        
-        # Send purchase notification
-        notify_purchase("로또645", result_645.get('games', 5), result_645.get('total_cost', 5000))
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
