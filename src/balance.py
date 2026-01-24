@@ -23,18 +23,33 @@ def get_balance(page: Page) -> dict:
         }
     """
     # Navigate to My Page
-    page.goto("https://www.dhlottery.co.kr/mypage/home", timeout=30000, wait_until="domcontentloaded")
-    page.wait_for_load_state("networkidle", timeout=30000)
+    print("🔍 마이페이지로 이동 중...")
+    page.goto("https://www.dhlottery.co.kr/mypage/home", timeout=60000, wait_until="domcontentloaded")
+    page.wait_for_load_state("networkidle", timeout=60000)
+    
+    # Take a screenshot for debugging
+    page.screenshot(path="debug_mypage.png")
+    print("📸 스크린샷 저장: debug_mypage.png")
+    
+    # Wait a bit more for dynamic content
+    page.wait_for_timeout(2000)
+    
+    # Try to find the balance elements with explicit wait
+    print("🔍 잔액 요소를 찾는 중...")
     
     # Get deposit balance (예치금 잔액)
     # Selector: #totalAmt (contains only number like "35,000")
     deposit_el = page.locator("#totalAmt")
+    deposit_el.wait_for(state="visible", timeout=60000)
     deposit_text = deposit_el.inner_text().strip()
+    print(f"💰 예치금 텍스트: {deposit_text}")
     
     # Get available amount (구매가능)
     # Selector: #divCrntEntrsAmt (contains number with unit like "20,000원")
     available_el = page.locator("#divCrntEntrsAmt")
+    available_el.wait_for(state="visible", timeout=60000)
     available_text = available_el.inner_text().strip()
+    print(f"🛒 구매가능 텍스트: {available_text}")
     
     # Parse amounts (remove non-digits)
     deposit_balance = int(re.sub(r'[^0-9]', '', deposit_text))
