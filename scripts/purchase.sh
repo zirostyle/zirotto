@@ -32,9 +32,10 @@ fi
 
 # Step 2: Charge if needed
 MIN_REQUIRED=10000
+CHARGE_AMOUNT=20000
 if [ "$AVAILABLE_AMOUNT" -lt "$MIN_REQUIRED" ]; then
-    echo "💳 Balance low (₩${AVAILABLE_AMOUNT}). Charging ₩10,000..."
-    "$VENV_PYTHON" "$PROJECT_DIR/src/charge.py" 10000
+    echo "💳 Balance low (₩${AVAILABLE_AMOUNT}). Charging ₩${CHARGE_AMOUNT}..."
+    "$VENV_PYTHON" "$PROJECT_DIR/src/charge.py" "$CHARGE_AMOUNT"
 fi
 
 # Step 3: Buy Lotto 720
