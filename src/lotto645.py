@@ -166,7 +166,37 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
 
         # Automatic games
         if auto_games > 0:
-            page.click("#num2") 
+            # Take screenshot for debugging
+            page.screenshot(path="debug_lotto645.png")
+            print("📸 로또645 페이지 스크린샷 저장")
+            
+            # Try multiple selectors for the auto number button
+            auto_button_selectors = [
+                "#num2",
+                "input[name='num2']",
+                "input[value='자동']",
+                "label[for='num2']",
+                ".select_auto"
+            ]
+            
+            clicked = False
+            for selector in auto_button_selectors:
+                try:
+                    print(f"🔍 시도 중: {selector}")
+                    page.click(selector, timeout=5000, force=True)
+                    print(f"✅ 자동 버튼 클릭 성공: {selector}")
+                    clicked = True
+                    break
+                except Exception as e:
+                    print(f"❌ 실패: {selector} - {str(e)[:50]}")
+            
+            if not clicked:
+                # Save HTML for debugging
+                with open("debug_lotto645.html", "w", encoding="utf-8") as f:
+                    f.write(page.content())
+                print("📄 HTML 저장: debug_lotto645.html")
+                raise Exception("자동 번호 선택 버튼을 찾을 수 없습니다")
+            
             page.select_option("#amoundApply", str(auto_games))
             page.click("#btnSelectNum")
             print(f'✅ Automatic game(s) added: {auto_games}')
