@@ -8,11 +8,9 @@ import re
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
 from balance import get_balance
-from telegram_notifier import notify_balance, notify_charge, notify_lotto720_purchase, notify_lotto645_purchase
+from telegram_notifier import notify_balance, notify_lotto645_purchase
 
-# Import charge and purchase functions
-from charge import charge_balance
-from lotto720 import purchase_lotto720
+# Import purchase function
 from lotto645 import purchase_lotto645
 
 
@@ -49,43 +47,37 @@ def run_all_tasks(playwright: Playwright) -> None:
         # Send balance notification
         notify_balance(balance_info['deposit_balance'], balance_info['available_amount'])
         
-        # Step 3: Skip charging for now (충전 기능은 일단 건너뜁니다)
-        print(f"\n💰 현재 잔액: ₩{balance_info['available_amount']:,}")
-        print("⏭️  충전 단계 건너뜀 (현재 잔액으로 진행)")
+        # Check if balance is sufficient
+        MIN_REQUIRED = 5000  # 로또645 최소 5게임
+        if balance_info['available_amount'] < MIN_REQUIRED:
+            print(f"\n⚠️ 잔액 부족: ₩{balance_info['available_amount']:,} (최소 ₩{MIN_REQUIRED:,} 필요)")
+            print("   수동으로 예치금을 충전해주세요.")
+            print("   https://www.dhlottery.co.kr/mypage/mndpChrg")
+            return
         
-        # Step 4: Buy Lotto 645 (먼저 시도)
+        print(f"\n💰 현재 잔액: ₩{balance_info['available_amount']:,}")
+        
+        # Step 3: Buy Lotto 645
         print("\n" + "="*50)
         print("🎫 로또 645 구매 중...")
         print("="*50)
         
         try:
             result_645 = purchase_lotto645(page)
-            print("✅ 로또 645 구매 완료!")
+            
+            if result_645 and result_645.get('games', 0) > 0:
+                print(f"✅ 로또 645 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
+            else:
+                print("⚠️ 로또 645 구매 실패 - 결과를 확인할 수 없습니다.")
+                
         except Exception as e:
             error_msg = str(e)
             if "구매 불가" in error_msg or "구매.*시간" in error_msg:
                 print(f"⏭️  {error_msg}")
                 print("   (정상적인 구매 불가 시간대입니다)")
-                # 구매 불가 시간은 에러가 아님
             else:
-                # 실제 에러인 경우만 다시 발생
+                print(f"❌ 로또 645 구매 실패: {e}")
                 raise
-        
-        # Step 5: Buy Lotto 720 (645 후 시도)
-        print("\n" + "="*50)
-        print("🎫 로또 720 구매 중...")
-        print("="*50)
-        
-        try:
-            result_720 = purchase_lotto720(page)
-            print("✅ 로또 720 구매 완료!")
-        except Exception as e:
-            error_msg = str(e)
-            if "구매 불가" in error_msg:
-                print(f"⏭️  {error_msg}")
-            else:
-                print(f"⚠️ 로또 720 구매 실패: {e}")
-            # 로또720 실패해도 계속 진행
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
