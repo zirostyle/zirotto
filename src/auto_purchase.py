@@ -8,10 +8,12 @@ import re
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
 from balance import get_balance
-from telegram_notifier import notify_balance, notify_lotto645_purchase
+from telegram_notifier import notify_balance, notify_charge, notify_lotto645_purchase, notify_lotto720_purchase
 
-# Import purchase function
+# Import functions
+from charge import charge_balance
 from lotto645 import purchase_lotto645
+from lotto720 import purchase_lotto720
 
 
 def run_all_tasks(playwright: Playwright) -> None:
@@ -47,17 +49,47 @@ def run_all_tasks(playwright: Playwright) -> None:
         # Send balance notification
         notify_balance(balance_info['deposit_balance'], balance_info['available_amount'])
         
-        # Check if balance is sufficient
-        MIN_REQUIRED = 5000  # 로또645 최소 5게임
+        # Step 3: Charge if needed
+        MIN_REQUIRED = 10000  # 로또645 5게임 + 로또720 5게임
+        CHARGE_AMOUNT = 20000
+        
         if balance_info['available_amount'] < MIN_REQUIRED:
-            print(f"\n⚠️ 잔액 부족: ₩{balance_info['available_amount']:,} (최소 ₩{MIN_REQUIRED:,} 필요)")
-            print("   수동으로 예치금을 충전해주세요.")
-            print("   https://www.dhlottery.co.kr/mypage/mndpChrg")
-            return
+            print("\n" + "="*50)
+            print(f"💳 잔액 부족 (₩{balance_info['available_amount']:,}). ₩{CHARGE_AMOUNT:,} 충전 중...")
+            print("="*50)
+            
+            try:
+                success = charge_balance(page, CHARGE_AMOUNT)
+                if success:
+                    print(f"✅ 충전 완료! ₩{CHARGE_AMOUNT:,}")
+                    notify_charge(CHARGE_AMOUNT, True)
+                else:
+                    print(f"❌ 충전 실패 (현재 잔액으로 진행)")
+                    notify_charge(CHARGE_AMOUNT, False)
+            except Exception as e:
+                print(f"❌ 충전 중 에러 발생: {e}")
+                notify_charge(CHARGE_AMOUNT, False)
+                # 충전 실패해도 현재 잔액으로 계속 진행
+        else:
+            print(f"\n✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
         
-        print(f"\n💰 현재 잔액: ₩{balance_info['available_amount']:,}")
+        # Step 4: Buy Lotto 720
+        print("\n" + "="*50)
+        print("🎫 연금복권 720 구매 중...")
+        print("="*50)
         
-        # Step 3: Buy Lotto 645
+        try:
+            result_720 = purchase_lotto720(page)
+            if result_720 and result_720.get('games', 0) > 0:
+                print(f"✅ 연금복권 720 구매 완료! ({result_720['games']}게임, ₩{result_720['total_cost']:,})")
+            else:
+                print("⚠️ 연금복권 720 구매 실패")
+        except Exception as e:
+            error_msg = str(e)
+            print(f"❌ 연금복권 720 구매 실패: {error_msg}")
+            # 720 실패해도 645는 계속 진행
+        
+        # Step 5: Buy Lotto 645
         print("\n" + "="*50)
         print("🎫 로또 645 구매 중...")
         print("="*50)
