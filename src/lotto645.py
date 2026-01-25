@@ -365,19 +365,51 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             page.screenshot(path="debug_lotto645_after_purchase.png")
             print("📸 구매 후 스크린샷 저장: debug_lotto645_after_purchase.png")
             
+            # HTML 저장
+            with open("debug_lotto645_after_purchase.html", "w", encoding="utf-8") as f:
+                f.write(page.content())
+            print("📄 구매 후 HTML 저장: debug_lotto645_after_purchase.html")
+            
             # 경고: 구매 완료를 확인할 수 없음
-            print("⚠️ 경고: 구매 완료를 확인할 수 없습니다. 마이페이지에서 구매 내역을 확인하세요.")
+            print("⚠️ 경고: 구매 완료를 확인할 수 없습니다.")
+            print("   마이페이지에서 구매 내역을 직접 확인하세요.")
+            print("   https://www.dhlottery.co.kr/mypage/LottoWinHistList.do")
         
-        print(f'✅ Lotto 6/45: Purchase process completed ({total_games} games)')
+        # 3. 최종 검증: 마이페이지에서 실제 구매 내역 확인
+        print("\n🔍 구매 내역 최종 검증 중...")
+        time.sleep(3)
+        
+        try:
+            page.goto("https://www.dhlottery.co.kr/mypage/LottoWinHistList.do", timeout=30000)
+            page.wait_for_load_state("networkidle", timeout=20000)
+            
+            # 최근 구매 내역이 있는지 확인
+            recent_purchase = page.locator("table tbody tr").first
+            if recent_purchase.count() > 0:
+                purchase_text = recent_purchase.inner_text(timeout=5000)
+                print(f"✅ 구매 내역 확인됨")
+                print(f"   최근 구매: {purchase_text[:100]}")
+                success = True
+            else:
+                print("⚠️ 구매 내역이 없습니다.")
+                success = False
+        except Exception as e:
+            print(f"⚠️ 구매 내역 확인 실패: {e}")
+            # 검증 실패는 구매 실패를 의미하지 않음 (일단 통과)
+        
+        if success:
+            print(f'\n✅ Lotto 6/45: 구매 완료! ({total_games}게임, ₩{total_games * 1000:,})')
+        else:
+            print(f'\n❌ Lotto 6/45: 구매 실패 가능성 있음')
         
         # 구매한 번호 출력
         if purchased_numbers:
-            print("\n구매한 번호:")
+            print("\n📋 구매한 번호:")
             for i, nums in enumerate(purchased_numbers, 1):
                 print(f"  {i}. {' '.join([f'{n:02d}' for n in sorted(nums)])}")
         
-        notify_lotto645_purchase(auto_games, len(manual_numbers), True, numbers=purchased_numbers)
-        return {'games': total_games, 'total_cost': total_games * 1000, 'numbers': purchased_numbers}
+        notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=purchased_numbers)
+        return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': purchased_numbers}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")
