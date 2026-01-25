@@ -293,30 +293,67 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 purchased_numbers = manual_numbers
         
         # Purchase
+        print("🛒 구매 버튼 클릭...")
         page.click("#btnBuy")
         
         # Confirm purchase popup
+        print("✅ 구매 확인 팝업에서 확인 클릭...")
         page.click("#popupLayerConfirm input[value='확인']")
         
-        # Check for purchase limit alert or recommendation popup AFTER confirmation
-        # Wait enough time for popup to appear (network lag handling)
-        time.sleep(3)
+        # Wait for purchase to complete
+        print("⏳ 구매 처리 대기 중...")
+        time.sleep(5)
         
         # 1. Check for specific limit exceeded recommendation popup
         limit_popup = page.locator("#recommend720Plus")
         if limit_popup.is_visible():
             error_msg = "Weekly purchase limit exceeded"
             print(f"❌ Error: {error_msg}")
-            # Try to find error message inside
             try:
                 content = limit_popup.locator(".cont1").inner_text()
                 print(f"   Message: {content.strip()}")
             except:
                 pass
             notify_lotto645_purchase(auto_games, len(manual_numbers), False, error_msg)
-            return
-
-        print(f'✅ Lotto 6/45: All {total_games} games purchased successfully!')
+            return {'games': 0, 'total_cost': 0, 'numbers': []}
+        
+        # 2. Check for success message or redirect to purchase complete page
+        success = False
+        try:
+            # 성공 메시지 또는 완료 페이지로 이동 확인
+            success_indicators = [
+                "text=/구매.*완료/",
+                "text=/구매.*성공/",
+                ".complete",
+                "#successMessage"
+            ]
+            
+            for selector in success_indicators:
+                try:
+                    if page.locator(selector).is_visible(timeout=3000):
+                        success = True
+                        print(f"✅ 구매 완료 확인: {selector}")
+                        break
+                except:
+                    pass
+            
+            # URL 변경 확인
+            current_url = page.url
+            if "confirm" in current_url.lower() or "complete" in current_url.lower():
+                success = True
+                print(f"✅ 구매 완료 페이지 확인: {current_url}")
+        except Exception as e:
+            print(f"⚠️ 구매 완료 검증 중 에러: {e}")
+        
+        if not success:
+            # 스크린샷 저장
+            page.screenshot(path="debug_lotto645_after_purchase.png")
+            print("📸 구매 후 스크린샷 저장: debug_lotto645_after_purchase.png")
+            
+            # 경고: 구매 완료를 확인할 수 없음
+            print("⚠️ 경고: 구매 완료를 확인할 수 없습니다. 마이페이지에서 구매 내역을 확인하세요.")
+        
+        print(f'✅ Lotto 6/45: Purchase process completed ({total_games} games)')
         
         # 구매한 번호 출력
         if purchased_numbers:
