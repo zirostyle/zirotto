@@ -154,52 +154,77 @@ def charge_deposit(page: Page, amount: int) -> bool:
         print("❌ Error: CHARGE_PIN not found in environment variables.")
         return False
 
-    print(f"Navigating to charge page for {amount:,} won...")
+    print(f"💳 충전 페이지로 이동 중... (₩{amount:,})")
     page.goto("https://www.dhlottery.co.kr/mypage/mndpChrg", timeout=30000, wait_until="domcontentloaded")
+    page.wait_for_load_state("networkidle", timeout=20000)
+    time.sleep(2)
     
     # 간편충전 선택
+    print("  간편충전 선택...")
     page.click("text=간편충전")
+    time.sleep(1)
     
     # 금액 선택
     amount_map = {5000: "5,000", 10000: "10,000", 20000: "20,000"}
     if amount not in amount_map:
         print(f"❌ Error: Invalid amount {amount}. Choose 5000, 10000, 20000.")
         return False
-        
-    # Updated selector from 'amoundApply' to 'EcAmt'
-    page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
     
-    # 충전하기 버튼 클릭 (간편충전 하단 버튼)
-    # fn_openEcRegistAccountCheck가 있는 버튼 중 'visible'한 것만 클릭
-    charge_btn = page.locator("button", has_text="충전하기").filter(has=page.locator("xpath=self::*[contains(@onclick, 'fn_openEcRegistAccountCheck')]")).locator("visible=true")
-    if charge_btn.count() > 0:
-        charge_btn.first.click()
-    else:
-        # Fallback: try class based if text fails
-        page.locator(".btn-rec01:visible").first.click()
+    print(f"  금액 선택: {amount_map[amount]}원")
+    page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
+    time.sleep(1)
+    
+    # 충전하기 버튼 클릭
+    print("  충전하기 버튼 클릭...")
+    try:
+        charge_btn = page.locator("button:has-text('충전하기')")
+        if charge_btn.count() > 0:
+            charge_btn.first.click()
+        else:
+            page.locator(".btn-rec01").first.click()
+    except Exception as e:
+        print(f"❌ 충전 버튼 클릭 실패: {e}")
+        return False
     
     # PIN 키패드 대기
-    # Updated selector: .kpd-layer -> .nppfs-keypad
+    print("  PIN 키패드 대기 중...")
     try:
         page.wait_for_selector(".nppfs-keypad", state="visible", timeout=10000)
     except Exception:
-        # Fallback for old selector just in case
-        page.wait_for_selector(".kpd-layer", state="visible", timeout=5000)
+        try:
+            page.wait_for_selector(".kpd-layer", state="visible", timeout=5000)
+        except Exception as e:
+            print(f"❌ 키패드를 찾을 수 없습니다: {e}")
+            page.screenshot(path="debug_charge_no_keypad.png")
+            return False
 
-    number_map = parse_keypad(page)
-    
-    if len(number_map) < 9:
-        print(f"❌ Error: Keypad recognition failed (only {len(number_map)} digits).")
+    print("  키패드 분석 중...")
+    try:
+        number_map = parse_keypad(page)
+    except Exception as e:
+        print(f"❌ 키패드 분석 실패: {e}")
+        page.screenshot(path="debug_charge_keypad_fail.png")
         return False
-        
-    for digit in CHARGE_PIN:
+    
+    print(f"  인식된 숫자: {len(number_map)}개")
+    if len(number_map) < len(set(CHARGE_PIN)):
+        print(f"❌ Error: 필요한 숫자를 모두 인식하지 못했습니다 (인식: {len(number_map)}, 필요: {len(set(CHARGE_PIN))}).")
+        return False
+    
+    print(f"  PIN 입력 중... (길이: {len(CHARGE_PIN)})")
+    for i, digit in enumerate(CHARGE_PIN):
         if digit in number_map:
             number_map[digit].click()
             time.sleep(0.3)
         else:
+            print(f"❌ Error: 숫자 '{digit}'를 키패드에서 찾을 수 없습니다.")
             return False
-            
-    page.wait_for_load_state("networkidle")
+    
+    print("  충전 완료 대기 중...")
+    page.wait_for_load_state("networkidle", timeout=30000)
+    time.sleep(2)
+    
+    print("✅ 충전 완료!")
     return True
 
 def run(playwright: Playwright, amount: int):
