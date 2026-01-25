@@ -140,11 +140,18 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     try:
 
         # Navigate to game page
-        page.goto(url="https://ol.dhlottery.co.kr/olotto/game/game645.do", timeout=30000, wait_until="domcontentloaded")
-        print('✅ Navigated to Lotto 6/45 page')
-
-        # Wait for page to be fully loaded
-        page.wait_for_load_state("networkidle")
+        print("  로또645 페이지 이동 중...")
+        page.goto(url="https://ol.dhlottery.co.kr/olotto/game/game645.do", timeout=60000, wait_until="load")
+        print('  페이지 로드 완료, networkidle 대기...')
+        
+        try:
+            page.wait_for_load_state("networkidle", timeout=30000)
+        except:
+            print('  ⚠️ networkidle 타임아웃, 계속 진행...')
+            page.wait_for_load_state("domcontentloaded", timeout=10000)
+        
+        time.sleep(3)
+        print('✅ 로또 6/45 페이지 로드 완료')
         
         # Check if page shows "구매불가" message
         try:

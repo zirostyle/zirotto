@@ -42,12 +42,17 @@ def run_all_tasks(playwright: Playwright) -> None:
         print("\n" + "="*50)
         print("💰 잔액 확인 중...")
         print("="*50)
+        import time
+        time.sleep(3)  # 로그인 후 대기
+        
         balance_info = get_balance(page)
         print(f"💰 예치금 잔액: {balance_info['deposit_balance']:,}원")
         print(f"🛒 구매가능: {balance_info['available_amount']:,}원")
         
         # Send balance notification
         notify_balance(balance_info['deposit_balance'], balance_info['available_amount'])
+        
+        time.sleep(3)  # 잔액 확인 후 대기
         
         # Step 3: Charge if needed
         MIN_REQUIRED = 10000  # 로또645 5게임 + 로또720 5게임
@@ -78,6 +83,8 @@ def run_all_tasks(playwright: Playwright) -> None:
         print("🎫 연금복권 720 구매 중...")
         print("="*50)
         
+        time.sleep(5)  # 충전 후 충분한 대기
+        
         try:
             result_720 = purchase_lotto720(page)
             if result_720 and result_720.get('games', 0) > 0:
@@ -88,6 +95,8 @@ def run_all_tasks(playwright: Playwright) -> None:
             error_msg = str(e)
             print(f"❌ 연금복권 720 구매 실패: {error_msg}")
             # 720 실패해도 645는 계속 진행
+        
+        time.sleep(5)  # 로또720 후 대기
         
         # Step 5: Buy Lotto 645
         print("\n" + "="*50)
