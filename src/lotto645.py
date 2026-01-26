@@ -398,40 +398,77 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             print("   마이페이지에서 구매 내역을 직접 확인하세요.")
             print("   https://www.dhlottery.co.kr/mypage/LottoWinHistList.do")
         
-        # 3. 최종 검증: 마이페이지에서 실제 구매 내역 확인
-        print("\n🔍 구매 내역 최종 검증 중...")
-        time.sleep(3)
+        # 3. 최종 검증: 마이페이지에서 실제 구매 내역 및 번호 확인
+        print("\n🔍 구매 내역 최종 검증 및 번호 추출 중...")
+        time.sleep(5)
         
+        verified_numbers = []
         try:
             page.goto("https://www.dhlottery.co.kr/mypage/LottoWinHistList.do", timeout=30000)
             page.wait_for_load_state("networkidle", timeout=20000)
+            time.sleep(2)
             
-            # 최근 구매 내역이 있는지 확인
+            # 최근 구매 내역 확인
             recent_purchase = page.locator("table tbody tr").first
             if recent_purchase.count() > 0:
                 purchase_text = recent_purchase.inner_text(timeout=5000)
                 print(f"✅ 구매 내역 확인됨")
-                print(f"   최근 구매: {purchase_text[:100]}")
+                print(f"   {purchase_text[:150]}")
                 success = True
+                
+                # 구매 내역에서 번호 추출 시도
+                try:
+                    # 번호 영역 클릭하여 상세 보기
+                    detail_btn = recent_purchase.locator("a, button, .btn").first
+                    if detail_btn.count() > 0:
+                        detail_btn.click(timeout=3000)
+                        time.sleep(2)
+                    
+                    # 상세 페이지에서 번호 추출
+                    number_elements = page.locator(".win_num, .num, [class*='number']")
+                    for i in range(number_elements.count()):
+                        try:
+                            text = number_elements.nth(i).inner_text()
+                            # 숫자 6개 추출
+                            nums = re.findall(r'\b\d{1,2}\b', text)
+                            if len(nums) >= 6:
+                                verified_numbers.append([int(n) for n in nums[:6]])
+                                print(f"  번호 {i+1}: {' '.join([f'{int(n):02d}' for n in nums[:6]])}")
+                        except:
+                            pass
+                except Exception as e:
+                    print(f"  ⚠️ 상세 번호 추출 실패: {e}")
+                    # 번호 추출 실패해도 구매는 성공
+                
+                # 추출된 번호가 없으면 화면에서 추출한 번호 사용
+                if not verified_numbers and purchased_numbers:
+                    verified_numbers = purchased_numbers
+                    print("  📝 화면에서 추출한 번호 사용")
+                
             else:
                 print("⚠️ 구매 내역이 없습니다.")
                 success = False
         except Exception as e:
             print(f"⚠️ 구매 내역 확인 실패: {e}")
-            # 검증 실패는 구매 실패를 의미하지 않음 (일단 통과)
+            # 검증 실패는 구매 실패를 의미하지 않음
         
         if success:
             print(f'\n✅ Lotto 6/45: 구매 완료! ({total_games}게임, ₩{total_games * 1000:,})')
         else:
             print(f'\n❌ Lotto 6/45: 구매 실패 가능성 있음')
         
-        # 구매한 번호 출력
-        if purchased_numbers:
-            print("\n📋 구매한 번호:")
-            for i, nums in enumerate(purchased_numbers, 1):
-                print(f"  {i}. {' '.join([f'{n:02d}' for n in sorted(nums)])}")
+        # 최종 구매 번호 (검증된 번호 우선, 없으면 추출한 번호)
+        final_numbers = verified_numbers if verified_numbers else purchased_numbers
         
-        notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=purchased_numbers)
+        # 구매한 번호 출력
+        if final_numbers:
+            print("\n📋 구매한 번호:")
+            for i, nums in enumerate(final_numbers, 1):
+                print(f"  {i}. {' '.join([f'{n:02d}' for n in sorted(nums)])}")
+        else:
+            print("\n⚠️ 구매 번호를 확인할 수 없습니다. 마이페이지에서 확인하세요.")
+        
+        notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
         return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': purchased_numbers}
 
     except Exception as e:
