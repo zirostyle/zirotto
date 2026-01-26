@@ -3,11 +3,10 @@ name: Lotto Purchase (Run on GitHub)
 on:
   workflow_dispatch:
   schedule:
-    # 매일 오전 9:00 KST (UTC 00:00) - 스크립트가 구매 가능 시간 자동 체크
+    # 매일 오전 9:00 KST (UTC 00:00)
     - cron: '0 0 * * *'
-    # 추가 옵션들 (필요시 주석 해제):
-    # - cron: '0 0 * * 2-6'  # 화-토요일만
-    # - cron: '0 0,12 * * *'  # 매일 09:00, 21:00
+    # 매일 오후 6:00 KST (UTC 09:00) - 추가 실행
+    - cron: '0 9 * * *'
 
 jobs:
   purchase:
