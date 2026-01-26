@@ -157,12 +157,35 @@ def charge_deposit(page: Page, amount: int) -> bool:
     print(f"💳 충전 페이지로 이동 중... (₩{amount:,})")
     page.goto("https://www.dhlottery.co.kr/mypage/mndpChrg", timeout=30000, wait_until="domcontentloaded")
     page.wait_for_load_state("networkidle", timeout=20000)
-    time.sleep(2)
+    time.sleep(3)
+    
+    # 스크린샷 1: 초기 페이지
+    page.screenshot(path="debug_charge_01_initial.png")
+    print("  📸 충전 페이지 초기 화면 저장")
     
     # 간편충전 선택
-    print("  간편충전 선택...")
-    page.click("text=간편충전")
-    time.sleep(1)
+    print("  간편충전 탭 클릭...")
+    try:
+        # 여러 셀렉터 시도
+        selectors = ["text=간편충전", "#tab2", ".tab:has-text('간편충전')"]
+        clicked = False
+        for selector in selectors:
+            try:
+                page.click(selector, timeout=3000)
+                clicked = True
+                print(f"  ✅ 간편충전 선택: {selector}")
+                break
+            except:
+                pass
+        
+        if not clicked:
+            print("  ⚠️ 간편충전 탭을 찾을 수 없음, 현재 페이지 그대로 진행...")
+    except Exception as e:
+        print(f"  ⚠️ 간편충전 선택 실패: {e}")
+    
+    time.sleep(2)
+    page.screenshot(path="debug_charge_02_after_tab.png")
+    print("  📸 탭 선택 후 화면 저장")
     
     # 금액 선택
     amount_map = {5000: "5,000", 10000: "10,000", 20000: "20,000"}
@@ -171,32 +194,82 @@ def charge_deposit(page: Page, amount: int) -> bool:
         return False
     
     print(f"  금액 선택: {amount_map[amount]}원")
-    page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
-    time.sleep(1)
+    try:
+        page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
+    except Exception as e:
+        print(f"  ⚠️ 금액 선택 실패: {e}")
+        # 셀렉터 확인을 위해 HTML 저장
+        with open("debug_charge_html.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
+        print("  📄 HTML 저장: debug_charge_html.html")
+    
+    time.sleep(2)
+    page.screenshot(path="debug_charge_03_after_amount.png")
+    print("  📸 금액 선택 후 화면 저장")
     
     # 충전하기 버튼 클릭
-    print("  충전하기 버튼 클릭...")
+    print("  충전하기 버튼 찾기...")
     try:
-        charge_btn = page.locator("button:has-text('충전하기')")
-        if charge_btn.count() > 0:
-            charge_btn.first.click()
-        else:
-            page.locator(".btn-rec01").first.click()
+        # 여러 셀렉터 시도
+        charge_selectors = [
+            "button:has-text('충전하기')",
+            ".btn-rec01",
+            "button.btn",
+            "[onclick*='charge']",
+            "[onclick*='Charge']"
+        ]
+        
+        clicked = False
+        for selector in charge_selectors:
+            try:
+                btn = page.locator(selector)
+                if btn.count() > 0:
+                    print(f"  시도: {selector} ({btn.count()}개 발견)")
+                    btn.first.click(timeout=3000)
+                    clicked = True
+                    print(f"  ✅ 충전 버튼 클릭: {selector}")
+                    break
+            except Exception as e:
+                print(f"  ❌ {selector}: {str(e)[:40]}")
+        
+        if not clicked:
+            print("  ❌ 충전 버튼을 찾을 수 없습니다.")
+            return False
     except Exception as e:
         print(f"❌ 충전 버튼 클릭 실패: {e}")
         return False
     
+    time.sleep(3)
+    page.screenshot(path="debug_charge_04_after_button.png")
+    print("  📸 버튼 클릭 후 화면 저장")
+    
     # PIN 키패드 대기
     print("  PIN 키패드 대기 중...")
-    try:
-        page.wait_for_selector(".nppfs-keypad", state="visible", timeout=10000)
-    except Exception:
+    
+    # 여러 셀렉터 시도
+    keypad_selectors = [".nppfs-keypad", ".kpd-layer", "#keypad", ".keypad"]
+    keypad_found = False
+    
+    for selector in keypad_selectors:
         try:
-            page.wait_for_selector(".kpd-layer", state="visible", timeout=5000)
-        except Exception as e:
-            print(f"❌ 키패드를 찾을 수 없습니다: {e}")
-            page.screenshot(path="debug_charge_no_keypad.png")
-            return False
+            print(f"  키패드 찾기: {selector}")
+            page.wait_for_selector(selector, state="visible", timeout=5000)
+            keypad_found = True
+            print(f"  ✅ 키패드 발견: {selector}")
+            break
+        except:
+            print(f"  ❌ 없음: {selector}")
+    
+    if not keypad_found:
+        print("❌ 키패드를 찾을 수 없습니다.")
+        page.screenshot(path="debug_charge_05_no_keypad.png")
+        print("  📸 키패드 없음 스크린샷 저장")
+        
+        # HTML 저장
+        with open("debug_charge_05_no_keypad.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
+        print("  📄 HTML 저장")
+        return False
 
     print("  키패드 분석 중...")
     try:
