@@ -27,18 +27,27 @@ def purchase_lotto720(page: Page) -> dict:
         dict: {'games': 5, 'total_cost': 5000, 'numbers': str}
     """
     try:
-        # Navigate to the Wrapper Page
+        # Navigate to game page
         print("🚀 연금복권720 페이지 이동...")
-        page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=60000, wait_until="load")
-        page.wait_for_load_state("networkidle", timeout=30000)
-        time.sleep(5)  # 페이지 완전 로딩 대기
+        
+        # Try direct game URL
+        try:
+            page.goto("https://el.dhlottery.co.kr/game/LP72/game720.jsp", timeout=60000, wait_until="domcontentloaded")
+            page.wait_for_load_state("networkidle", timeout=20000)
+        except:
+            print("  ⚠️ 직접 URL 실패, wrapper 시도...")
+            page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=60000, wait_until="domcontentloaded")
+            page.wait_for_load_state("networkidle", timeout=20000)
+        
+        time.sleep(3)
         
         # 현재 URL 확인
         current_url = page.url
         print(f"  현재 URL: {current_url}")
         
         if "m.dhlottery.co.kr" in current_url:
-            raise Exception("❌ 모바일 사이트로 리다이렉트됨. 브라우저 설정 문제.")
+            print("  ⚠️ 모바일 사이트로 리다이렉트됨. 로또720 건너뜀.")
+            return {'games': 0, 'total_cost': 0, 'numbers': ''}
         
         # Access the game iframe
         print("  iframe 대기 중...")
