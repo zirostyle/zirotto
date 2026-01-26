@@ -29,30 +29,14 @@ def run_all_tasks(playwright: Playwright) -> None:
     """
     # Create browser, context, and page (only once!)
     print("🌐 브라우저 시작...")
-    browser = playwright.chromium.launch(
-        headless=True,
-        args=[
-            '--disable-blink-features=AutomationControlled',
-            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        ]
-    )
+    browser = playwright.chromium.launch(headless=True)
     
-    # Use desktop viewport and user agent to avoid mobile site redirection
+    # Use desktop viewport and user agent
     context = browser.new_context(
         viewport={'width': 1920, 'height': 1080},
-        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        extra_http_headers={
-            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Sec-Ch-Ua-Platform': '"Windows"',
-            'Sec-Ch-Ua-Mobile': '?0'
-        }
+        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     )
     page = context.new_page()
-    
-    # Set additional headers for each page navigation
-    page.set_extra_http_headers({
-        'Referer': 'https://www.dhlottery.co.kr/'
-    })
     
     try:
         # Step 1: Login once
