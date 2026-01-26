@@ -49,15 +49,21 @@ def purchase_lotto720(page: Page) -> dict:
             print("  ⚠️ 모바일 사이트로 리다이렉트됨. 로또720 건너뜀.")
             return {'games': 0, 'total_cost': 0, 'numbers': ''}
         
-        # Access the game iframe
-        print("  iframe 대기 중...")
-        page.locator("#ifrm_tab").wait_for(state="visible", timeout=20000)
+        # Check if iframe exists or if we're on direct page
+        print("  페이지 구조 확인 중...")
         
-        frame = page.frame_locator("#ifrm_tab")
+        iframe_exists = page.locator("#ifrm_tab").count() > 0
         
-        # Wait for frame content
-        frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
-        print('✅ 게임 프레임 로드 완료')
+        if iframe_exists:
+            print("  iframe 모드")
+            frame = page.frame_locator("#ifrm_tab")
+            frame.locator("#curdeposit, .lpdeposit").first.wait_for(state="attached", timeout=20000)
+        else:
+            print("  직접 페이지 모드 (iframe 없음)")
+            # No iframe, use page directly
+            frame = page
+        
+        print('✅ 게임 페이지 로드 완료')
         
         time.sleep(1)
 

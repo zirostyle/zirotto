@@ -139,19 +139,33 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     
     try:
 
-        # Navigate to game page
+        # Navigate to game page with retry
         print("  로또645 페이지 이동 중...")
-        page.goto(url="https://ol.dhlottery.co.kr/olotto/game/game645.do", timeout=60000, wait_until="load")
-        print('  페이지 로드 완료, networkidle 대기...')
         
-        try:
-            page.wait_for_load_state("networkidle", timeout=30000)
-        except:
-            print('  ⚠️ networkidle 타임아웃, 계속 진행...')
-            page.wait_for_load_state("domcontentloaded", timeout=10000)
-        
-        time.sleep(3)
-        print('✅ 로또 6/45 페이지 로드 완료')
+        max_retries = 3
+        for retry in range(max_retries):
+            try:
+                if retry > 0:
+                    print(f"  재시도 {retry}/{max_retries-1}...")
+                    time.sleep(10)
+                
+                page.goto(url="https://ol.dhlottery.co.kr/olotto/game/game645.do", timeout=90000, wait_until="domcontentloaded")
+                print('  페이지 로드 완료')
+                
+                try:
+                    page.wait_for_load_state("networkidle", timeout=20000)
+                except:
+                    print('  ⚠️ networkidle 타임아웃, 계속 진행...')
+                
+                time.sleep(2)
+                print('✅ 로또 6/45 페이지 로드 완료')
+                break
+                
+            except Exception as e:
+                if retry < max_retries - 1:
+                    print(f"  ⚠️ 페이지 로드 실패, 재시도... ({str(e)[:50]})")
+                else:
+                    raise
         
         # Check if page shows "구매불가" message
         try:
