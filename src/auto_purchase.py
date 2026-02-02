@@ -86,25 +86,9 @@ def run_all_tasks(playwright: Playwright) -> None:
         else:
             print(f"\n✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
         
-        # Step 4: Buy Lotto 720
-        print("\n" + "="*50)
-        print("🎫 연금복권 720 구매 중...")
-        print("="*50)
-        
-        time.sleep(5)  # 충전 후 충분한 대기
-        
-        try:
-            result_720 = purchase_lotto720(page)
-            if result_720 and result_720.get('games', 0) > 0:
-                print(f"✅ 연금복권 720 구매 완료! ({result_720['games']}게임, ₩{result_720['total_cost']:,})")
-            else:
-                print("⚠️ 연금복권 720 구매 실패")
-        except Exception as e:
-            error_msg = str(e)
-            print(f"❌ 연금복권 720 구매 실패: {error_msg}")
-            # 720 실패해도 645는 계속 진행
-        
-        time.sleep(5)  # 로또720 후 대기
+        # Step 4: Skip Lotto 720 (현재 기술적 문제로 일시 중단)
+        print("\n⏭️  연금복권 720 구매 건너뜀 (현재 비활성화)")
+        print("   로또 6/45만 구매합니다.")
         
         # Step 5: Buy Lotto 645
         print("\n" + "="*50)
