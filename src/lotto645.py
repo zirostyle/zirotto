@@ -341,15 +341,24 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         # 1. Check for specific limit exceeded recommendation popup
         limit_popup = page.locator("#recommend720Plus")
         if limit_popup.is_visible():
-            error_msg = "Weekly purchase limit exceeded"
-            print(f"❌ Error: {error_msg}")
+            print(f"⚠️ 주간 구매 한도 초과")
             try:
                 content = limit_popup.locator(".cont1").inner_text()
                 print(f"   Message: {content.strip()}")
+                
+                # 한도 초과는 에러가 아니라 정상 상태
+                # 텔레그램으로 알림
+                from telegram_notifier import send_telegram_message
+                message = "⚠️ <b>로또 구매 한도 초과</b>\n\n"
+                message += "이번 주 구매 한도를 모두 사용했습니다.\n"
+                message += "다음 회차(토요일 21:00 이후)부터 구매 가능합니다.\n\n"
+                message += "<i>자동 구매는 다음 주에 진행됩니다.</i>"
+                send_telegram_message(message)
+                
             except:
                 pass
-            notify_lotto645_purchase(auto_games, len(manual_numbers), False, error_msg)
-            return {'games': 0, 'total_cost': 0, 'numbers': []}
+            
+            return {'games': 0, 'total_cost': 0, 'numbers': [], 'limit_exceeded': True}
         
         # 2. Check for success message or redirect to purchase complete page
         success = False
