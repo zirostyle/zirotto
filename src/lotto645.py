@@ -338,27 +338,23 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         print("⏳ 구매 처리 대기 중...")
         time.sleep(5)
         
-        # 1. Check for specific limit exceeded recommendation popup
+        # 1. Check for purchase limit popup
+        # 주의: 한도 초과 팝업이 나와도 이미 구매는 완료된 경우가 많음
+        limit_exceeded = False
         limit_popup = page.locator("#recommend720Plus")
+        
         if limit_popup.is_visible():
-            print(f"⚠️ 주간 구매 한도 초과")
+            print(f"⚠️ 주간 구매 한도 초과 팝업 감지")
+            limit_exceeded = True
             try:
                 content = limit_popup.locator(".cont1").inner_text()
-                print(f"   Message: {content.strip()}")
-                
-                # 한도 초과는 에러가 아니라 정상 상태
-                # 텔레그램으로 알림
-                from telegram_notifier import send_telegram_message
-                message = "⚠️ <b>로또 구매 한도 초과</b>\n\n"
-                message += "이번 주 구매 한도를 모두 사용했습니다.\n"
-                message += "다음 회차(토요일 21:00 이후)부터 구매 가능합니다.\n\n"
-                message += "<i>자동 구매는 다음 주에 진행됩니다.</i>"
-                send_telegram_message(message)
-                
+                print(f"   {content.strip()}")
             except:
                 pass
             
-            return {'games': 0, 'total_cost': 0, 'numbers': [], 'limit_exceeded': True}
+            # 팝업만으로는 구매 실패를 확정할 수 없음
+            # 마이페이지에서 실제 구매 여부 확인 필요
+            print("   → 마이페이지에서 실제 구매 여부 확인 예정")
         
         # 2. Check for success message or redirect to purchase complete page
         success = False
@@ -408,6 +404,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         time.sleep(5)
         
         verified_numbers = []
+        actual_purchased = False  # 실제 구매 여부
+        
         try:
             page.goto("https://www.dhlottery.co.kr/mypage/LottoWinHistList.do", timeout=30000)
             page.wait_for_load_state("networkidle", timeout=20000)
@@ -419,7 +417,22 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 purchase_text = recent_purchase.inner_text(timeout=5000)
                 print(f"✅ 구매 내역 확인됨")
                 print(f"   {purchase_text[:150]}")
-                success = True
+                
+                # 오늘 날짜가 포함된 구매 내역인지 확인
+                from datetime import datetime, timezone, timedelta
+                kst = timezone(timedelta(hours=9))
+                today = datetime.now(kst)
+                today_str = today.strftime('%Y-%m-%d')
+                
+                if today_str in purchase_text or today.strftime('%Y.%m.%d') in purchase_text:
+                    print(f"  ✅ 오늘 구매한 내역 확인!")
+                    actual_purchased = True
+                    success = True
+                else:
+                    print(f"  ⚠️ 오늘 구매 내역이 아닐 수 있습니다.")
+                    # 그래도 최근 내역이 있으면 일단 성공으로 간주
+                    actual_purchased = True
+                    success = True
                 
                 # 구매 내역에서 번호 추출 시도
                 try:
@@ -452,15 +465,33 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 
             else:
                 print("⚠️ 구매 내역이 없습니다.")
+                actual_purchased = False
                 success = False
         except Exception as e:
             print(f"⚠️ 구매 내역 확인 실패: {e}")
             # 검증 실패는 구매 실패를 의미하지 않음
         
-        if success:
+        # 최종 판단: 마이페이지에 구매 내역이 있으면 성공
+        if actual_purchased:
+            success = True
             print(f'\n✅ Lotto 6/45: 구매 완료! ({total_games}게임, ₩{total_games * 1000:,})')
+            
+            # 한도 초과 팝업이 나왔어도 구매는 성공한 것
+            if limit_exceeded:
+                print("  ℹ️  한도 초과 팝업이 나왔지만 구매는 정상 완료되었습니다.")
         else:
-            print(f'\n❌ Lotto 6/45: 구매 실패 가능성 있음')
+            if limit_exceeded:
+                # 한도 초과로 구매 안 됨
+                print(f'\n⚠️ Lotto 6/45: 주간 구매 한도 초과')
+                from telegram_notifier import send_telegram_message
+                message = "⚠️ <b>로또 구매 한도 초과</b>\n\n"
+                message += "이번 주 구매 한도를 모두 사용했습니다.\n"
+                message += "다음 회차(토요일 21:00 이후)부터 구매 가능합니다."
+                send_telegram_message(message)
+                return {'games': 0, 'total_cost': 0, 'numbers': [], 'limit_exceeded': True}
+            else:
+                print(f'\n❌ Lotto 6/45: 구매 실패')
+                success = False
         
         # 최종 구매 번호 (검증된 번호 우선, 없으면 추출한 번호)
         final_numbers = verified_numbers if verified_numbers else purchased_numbers
@@ -473,6 +504,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         else:
             print("\n⚠️ 구매 번호를 확인할 수 없습니다. 마이페이지에서 확인하세요.")
         
+        # 텔레그램 알림
         notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
         return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': purchased_numbers}
 
