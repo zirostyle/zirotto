@@ -1,4 +1,4 @@
-name: Lotto Purchase (Run on GitHub)
+name: Lotto Purchase (Run on GitHub) - Auto
 
 on:
   workflow_dispatch:
