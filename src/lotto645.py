@@ -357,7 +357,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             print("   → 마이페이지에서 실제 구매 여부 확인 예정")
         
         # 2. Check for success message or redirect to purchase complete page
-        success = False
+        purchase_completed_by_message = False
         try:
             # 성공 메시지 또는 완료 페이지로 이동 확인
             success_indicators = [
@@ -370,8 +370,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             for selector in success_indicators:
                 try:
                     if page.locator(selector).is_visible(timeout=3000):
-                        success = True
-                        print(f"✅ 구매 완료 확인: {selector}")
+                        purchase_completed_by_message = True
+                        print(f"✅ 구매 완료 메시지 감지: {selector}")
                         break
                 except:
                     pass
@@ -379,10 +379,10 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             # URL 변경 확인
             current_url = page.url
             if "confirm" in current_url.lower() or "complete" in current_url.lower():
-                success = True
-                print(f"✅ 구매 완료 페이지 확인: {current_url}")
+                purchase_completed_by_message = True
+                print(f"✅ 구매 완료 페이지로 이동: {current_url}")
         except Exception as e:
-            print(f"⚠️ 구매 완료 검증 중 에러: {e}")
+            print(f"⚠️ 구매 완료 메시지 확인 중 에러: {e}")
         
         if not success:
             # 스크린샷 저장
@@ -471,18 +471,22 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             print(f"⚠️ 구매 내역 확인 실패: {e}")
             # 검증 실패는 구매 실패를 의미하지 않음
         
-        # 최종 판단: 마이페이지에 구매 내역이 있으면 성공
-        if actual_purchased:
+        # 최종 판단: 구매 완료 메시지 또는 마이페이지 내역
+        if actual_purchased or purchase_completed_by_message:
             success = True
             print(f'\n✅ Lotto 6/45: 구매 완료! ({total_games}게임, ₩{total_games * 1000:,})')
             
-            # 한도 초과 팝업이 나왔어도 구매는 성공한 것
+            # 판단 근거 출력
+            if actual_purchased:
+                print("  📋 근거: 마이페이지에 구매 내역 확인됨")
+            if purchase_completed_by_message:
+                print("  ✅ 근거: 구매 완료 메시지 감지됨")
             if limit_exceeded:
-                print("  ℹ️  한도 초과 팝업이 나왔지만 구매는 정상 완료되었습니다.")
+                print("  ℹ️  참고: 한도 초과 팝업이 나왔지만 이미 구매는 완료됨")
         else:
             if limit_exceeded:
                 # 한도 초과로 구매 안 됨
-                print(f'\n⚠️ Lotto 6/45: 주간 구매 한도 초과')
+                print(f'\n⚠️ Lotto 6/45: 주간 구매 한도 초과 (구매 안 됨)')
                 from telegram_notifier import send_telegram_message
                 message = "⚠️ <b>로또 구매 한도 초과</b>\n\n"
                 message += "이번 주 구매 한도를 모두 사용했습니다.\n"
