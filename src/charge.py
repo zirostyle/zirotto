@@ -37,12 +37,17 @@ def parse_keypad(page: Page) -> dict:
     import io
 
     # 키패드 이미지 대기
-    # Updated from .kpd-layer to .nppfs-keypad based on browser inspection
     keypad_selector = ".nppfs-keypad"
-    page.wait_for_selector(keypad_selector, state="visible")
+    try:
+        page.wait_for_selector(keypad_selector, state="visible", timeout=5000)
+    except:
+        keypad_selector = ".kpd-layer"
+        page.wait_for_selector(keypad_selector, state="visible", timeout=5000)
     
-    # 키패드 버튼들 가져오기
+    # 키패드 버튼들 가져오기 (이미지 기반 랜덤 키패드)
     buttons = page.locator("img.kpd-data")
+    if buttons.count() == 0:
+        buttons = page.locator(f"{keypad_selector} img")
     count = buttons.count()
     
     if count == 0:
@@ -155,9 +160,16 @@ def charge_deposit(page: Page, amount: int) -> bool:
         return False
 
     print(f"💳 충전 페이지로 이동 중... (₩{amount:,})")
-    page.goto("https://www.dhlottery.co.kr/mypage/mndpChrg", timeout=30000, wait_until="domcontentloaded")
-    page.wait_for_load_state("networkidle", timeout=20000)
-    time.sleep(3)
+    try:
+        page.goto("https://www.dhlottery.co.kr/mypage/mndpChrg", timeout=30000, wait_until="domcontentloaded")
+    except Exception as e:
+        print(f"  ❌ 충전 페이지 로드 실패: {e}")
+        return False
+    try:
+        page.wait_for_load_state("networkidle", timeout=20000)
+    except:
+        print("  ⚠️ networkidle 타임아웃, 계속 진행...")
+    time.sleep(4)  # 페이지 안정화 대기 증가
     
     # 스크린샷 1: 초기 페이지
     page.screenshot(path="debug_charge_01_initial.png")
@@ -166,15 +178,25 @@ def charge_deposit(page: Page, amount: int) -> bool:
     # 간편충전 선택
     print("  간편충전 탭 클릭...")
     try:
-        # 여러 셀렉터 시도
-        selectors = ["text=간편충전", "#tab2", ".tab:has-text('간편충전')"]
+        # 여러 셀렉터 시도 (사이트 UI 변경 대응)
+        selectors = [
+            "text=간편충전",
+            "#tab2",
+            ".tab:has-text('간편충전')",
+            "a:has-text('간편충전')",
+            "li:has-text('간편충전')",
+            "[data-tab='2']",
+            ".tab2"
+        ]
         clicked = False
         for selector in selectors:
             try:
-                page.click(selector, timeout=3000)
-                clicked = True
-                print(f"  ✅ 간편충전 선택: {selector}")
-                break
+                el = page.locator(selector)
+                if el.count() > 0:
+                    el.first.click(timeout=3000)
+                    clicked = True
+                    print(f"  ✅ 간편충전 선택: {selector}")
+                    break
             except:
                 pass
         
@@ -194,11 +216,23 @@ def charge_deposit(page: Page, amount: int) -> bool:
         return False
     
     print(f"  금액 선택: {amount_map[amount]}원")
-    try:
-        page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
-    except Exception as e:
-        print(f"  ⚠️ 금액 선택 실패: {e}")
-        # 셀렉터 확인을 위해 HTML 저장
+    amount_selected = False
+    for amt_selector in ["select#EcAmt", "select[name='EcAmt']", "#EcAmt", "select.amount"]:
+        try:
+            page.select_option(amt_selector, label=f"{amount_map[amount]}원")
+            amount_selected = True
+            print(f"  ✅ 금액 선택 성공: {amt_selector}")
+            break
+        except:
+            try:
+                # value로 시도 (5000, 10000, 20000)
+                page.select_option(amt_selector, value=str(amount))
+                amount_selected = True
+                break
+            except:
+                pass
+    if not amount_selected:
+        print(f"  ⚠️ 금액 선택 실패")
         with open("debug_charge_html.html", "w", encoding="utf-8") as f:
             f.write(page.content())
         print("  📄 HTML 저장: debug_charge_html.html")
@@ -246,19 +280,19 @@ def charge_deposit(page: Page, amount: int) -> bool:
     # PIN 키패드 대기
     print("  PIN 키패드 대기 중...")
     
-    # 여러 셀렉터 시도
-    keypad_selectors = [".nppfs-keypad", ".kpd-layer", "#keypad", ".keypad"]
+    # 여러 셀렉터 시도 (사이트 UI 변경 대응)
+    keypad_selectors = [".nppfs-keypad", ".kpd-layer", "#keypad", ".keypad", "[class*='keypad']", ".kpd-layer-popup"]
     keypad_found = False
     
     for selector in keypad_selectors:
         try:
             print(f"  키패드 찾기: {selector}")
-            page.wait_for_selector(selector, state="visible", timeout=5000)
+            page.wait_for_selector(selector, state="visible", timeout=8000)
             keypad_found = True
             print(f"  ✅ 키패드 발견: {selector}")
             break
-        except:
-            print(f"  ❌ 없음: {selector}")
+        except Exception as e:
+            print(f"  ❌ 없음: {selector} ({str(e)[:30]})")
     
     if not keypad_found:
         print("❌ 키패드를 찾을 수 없습니다.")
@@ -271,11 +305,14 @@ def charge_deposit(page: Page, amount: int) -> bool:
         print("  📄 HTML 저장")
         return False
 
-    print("  키패드 분석 중...")
+    print("  키패드 분석 중... (OCR 사용 - tesseract-ocr 설치 필요)")
     try:
         number_map = parse_keypad(page)
     except Exception as e:
+        err_msg = str(e)
         print(f"❌ 키패드 분석 실패: {e}")
+        if "tesseract" in err_msg.lower() or "TesseractNotFound" in err_msg:
+            print("  💡 Tesseract OCR가 설치되어 있는지 확인하세요: apt install tesseract-ocr (Linux)")
         page.screenshot(path="debug_charge_keypad_fail.png")
         return False
     
