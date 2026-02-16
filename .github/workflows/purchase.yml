@@ -51,9 +51,11 @@ jobs:
         ls -la .env
 
     - name: Run Lotto Purchase Workflow
+      timeout-minutes: 15
       env:
         PYTHONPATH: src
         VENV_PYTHON: python  # Use system python set up by actions
+        ENABLE_LOTTO645: "0"  # 720 안정화 완료 후 1로 복구
       run: |
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh

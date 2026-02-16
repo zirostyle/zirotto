@@ -42,6 +42,11 @@ def _safe_manual_games_count() -> int:
     return 0
 
 
+def _is_enabled(name: str, default: str = "1") -> bool:
+    raw = str(os.environ.get(name, default)).strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
 def run_all_tasks(playwright: Playwright) -> None:
     """
     한 번의 브라우저 세션으로 모든 로또 구매 작업을 수행합니다.
@@ -154,30 +159,32 @@ def run_all_tasks(playwright: Playwright) -> None:
             notify_lotto720_purchase(False, str(e))
             print("   로또 6/45 구매는 계속 진행합니다.")
         
-        # Step 5: Buy Lotto 645
-        print("\n" + "="*50)
-        print("🎫 로또 645 구매 중...")
-        print("="*50)
-        
-        try:
-            result_645 = purchase_lotto645(page)
+        if _is_enabled("ENABLE_LOTTO645", "1"):
+            # Step 5: Buy Lotto 645
+            print("\n" + "="*50)
+            print("🎫 로또 645 구매 중...")
+            print("="*50)
             
-            if result_645 and result_645.get('games', 0) > 0:
-                print(f"✅ 로또 645 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
-            else:
-                print("⚠️ 로또 645 구매 실패 - 결과를 확인할 수 없습니다.")
+            try:
+                result_645 = purchase_lotto645(page)
                 
-        except Exception as e:
-            error_msg = str(e)
-            if "구매 불가" in error_msg or "구매.*시간" in error_msg:
-                print(f"⏭️  {error_msg}")
-                print("   (정상적인 구매 불가 시간대입니다)")
-            elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
-                print(f"⏭️  로또 645 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
-            else:
-                print(f"❌ 로또 645 구매 실패: {e}")
-                # 645 단일 실패로 전체 워크플로우를 중단하지 않음
-                # (720 구매 결과 확인을 우선)
+                if result_645 and result_645.get('games', 0) > 0:
+                    print(f"✅ 로또 645 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
+                else:
+                    print("⚠️ 로또 645 구매 실패 - 결과를 확인할 수 없습니다.")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                if "구매 불가" in error_msg or "구매.*시간" in error_msg:
+                    print(f"⏭️  {error_msg}")
+                    print("   (정상적인 구매 불가 시간대입니다)")
+                elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
+                    print(f"⏭️  로또 645 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
+                else:
+                    print(f"❌ 로또 645 구매 실패: {e}")
+                    # 645 단일 실패로 전체 워크플로우를 중단하지 않음
+        else:
+            print("\n⏭️ 로또 6/45 구매는 비활성화되어 건너뜁니다. (ENABLE_LOTTO645=0)")
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
