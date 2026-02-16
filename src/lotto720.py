@@ -169,7 +169,8 @@ def _read_balance(target) -> int:
 def _has_failure_signal(target) -> bool:
     # 너무 넓은 패턴(예: '한도', '.alert')은 오탐이 많아 제외
     failure_selectors = [
-        "text=/구매.*실패/",
+        "text=/구매\\s*실패\\s*했습니다/",
+        "text=/구매에\\s*실패/",
         "text=/결제.*실패/",
         "text=/잔액.*부족/",
         "text=/서비스.*점검/",
@@ -347,6 +348,25 @@ def _purchase_once(page: Page) -> dict:
         alert_popup = frame.locator("#popupLayerAlert")
         if alert_popup.count() > 0 and alert_popup.first.is_visible(timeout=1500):
             _click_first(alert_popup, ["button:has-text('확인')", "input[value='확인']", "a:has-text('확인')"], "팝업 확인")
+    except Exception:
+        pass
+
+    # 이전 구매 결과 팝업(#popup1)이 떠 있으면 닫고 초기 상태로 복귀
+    try:
+        if _is_visible(frame, "#popup1", timeout=1000):
+            _click_first(
+                frame,
+                [
+                    "#popup1 a:has-text('닫기')",
+                    "#popup1 a:has-text('확인')",
+                    "#popup1 .btn_lgray.medium",
+                    "#popup1 a:has-text('추가 구매하기')",
+                ],
+                "결과 팝업 닫기",
+                timeout=3000,
+                force=True,
+            )
+            time.sleep(1)
     except Exception:
         pass
 
