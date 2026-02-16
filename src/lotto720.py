@@ -83,6 +83,7 @@ def _navigate_to_lotto720(page: Page):
     ]
 
     last_url = ""
+    mobile_detected = False
     for idx, url in enumerate(desktop_urls, 1):
         page.goto(url, timeout=60000, wait_until="domcontentloaded")
         page.wait_for_load_state("networkidle", timeout=30000)
@@ -90,7 +91,11 @@ def _navigate_to_lotto720(page: Page):
 
         last_url = page.url
         print(f"  현재 URL (시도 {idx}): {last_url}")
-        if "m.dhlottery.co.kr" not in last_url:
+        if "m.dhlottery.co.kr" in last_url:
+            mobile_detected = True
+            print("  ℹ️ 모바일 페이지로 이동됨 - 모바일 화면으로 계속 진행")
+            break
+        else:
             frame = _get_frame(page)
             frame.locator("body").first.wait_for(state="attached", timeout=15000)
             return frame
@@ -98,7 +103,11 @@ def _navigate_to_lotto720(page: Page):
         # 모바일로 이동된 경우 데스크톱 URL로 재진입 시도
         print("  ⚠️ 모바일 리다이렉트 감지, 데스크톱 URL 재시도")
 
-    raise Exception(f"모바일 사이트로 리다이렉트됨 ({last_url})")
+    if mobile_detected:
+        page.locator("body").first.wait_for(state="attached", timeout=15000)
+        return page
+
+    raise Exception(f"연금복권 페이지 진입 실패 ({last_url})")
 
 
 def _purchase_once(page: Page) -> dict:
@@ -175,15 +184,6 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
     total_cost = 0
 
     try:
-        # 모바일 판정 방지: 실행 페이지에 데스크톱 platform 고정
-        page.add_init_script("""
-            Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Win32' });
-            Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
-            if (navigator.userAgentData) {
-                Object.defineProperty(navigator.userAgentData, 'mobile', { get: () => false });
-            }
-        """)
-
         print(f"🚀 연금복권720 구매 시작 (목표 금액: ₩{normalized_amount:,}, {purchase_count}회)")
 
         for i in range(purchase_count):
