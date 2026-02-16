@@ -32,12 +32,15 @@ def run_all_tasks(playwright: Playwright) -> None:
     print("🌐 브라우저 시작...")
     browser = playwright.chromium.launch(headless=True)
     
-    # Use desktop viewport and user agent
+    # 모바일 뷰포트 사용 (동행복권 모바일 구매 지원, 로또645 모바일 허용 반영)
     context = browser.new_context(
-        viewport={'width': 1920, 'height': 1080},
-        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        viewport={'width': 390, 'height': 844},
+        user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+        device_scale_factor=2,
+        is_mobile=True
     )
     page = context.new_page()
+    print("📱 모바일 뷰포트 적용 (390x844)")
     
     try:
         # Step 1: Login once
