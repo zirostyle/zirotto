@@ -47,6 +47,33 @@ def _is_enabled(name: str, default: str = "1") -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
+def _get_balance_resilient(page, attempts: int = 3):
+    """
+    잔액 조회가 실패할 때 재로그인까지 포함해 재시도합니다.
+    """
+    import time
+
+    last_error = None
+    for i in range(attempts):
+        try:
+            if i > 0:
+                print(f"🔄 잔액 조회 재시도 {i + 1}/{attempts}")
+            return get_balance(page)
+        except Exception as e:
+            last_error = e
+            print(f"⚠️ 잔액 조회 실패: {e}")
+            try:
+                # 세션/도메인 꼬임 복구
+                page.goto("https://www.dhlottery.co.kr/main", timeout=60000, wait_until="domcontentloaded")
+                time.sleep(1)
+                login(page, max_retries=2)
+            except Exception as relogin_error:
+                print(f"⚠️ 재로그인 실패: {relogin_error}")
+            time.sleep(2)
+
+    raise Exception(f"잔액 조회 최종 실패: {last_error}")
+
+
 def run_all_tasks(playwright: Playwright) -> None:
     """
     한 번의 브라우저 세션으로 모든 로또 구매 작업을 수행합니다.
@@ -76,7 +103,7 @@ def run_all_tasks(playwright: Playwright) -> None:
         import time
         time.sleep(3)  # 로그인 후 대기
         
-        balance_info = get_balance(page)
+        balance_info = _get_balance_resilient(page)
         print(f"💰 예치금 잔액: {balance_info['deposit_balance']:,}원")
         print(f"🛒 구매가능: {balance_info['available_amount']:,}원")
         
@@ -115,7 +142,7 @@ def run_all_tasks(playwright: Playwright) -> None:
 
         # 720 구매 직전 잔액 스냅샷 (검증용)
         try:
-            pre_720_balance_info = get_balance(page)
+            pre_720_balance_info = _get_balance_resilient(page)
             pre_720_available = pre_720_balance_info['available_amount']
             print(f"📌 720 구매 전 구매가능 금액: ₩{pre_720_available:,}")
         except Exception:
@@ -131,7 +158,7 @@ def run_all_tasks(playwright: Playwright) -> None:
             # 실제 구매 검증: 구매 전후 잔액 차이 확인
             post_720_balance = None
             try:
-                post_720_info = get_balance(page)
+                post_720_info = _get_balance_resilient(page)
                 post_720_balance = post_720_info['available_amount']
             except Exception:
                 pass
