@@ -572,13 +572,21 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None, us
         else:
             print("\n⚠️ 구매 번호를 확인할 수 없습니다. 마이페이지에서 확인하세요.")
         
-        # 텔레그램 알림 (실패해도 구매 결과는 반환)
+        # 텔레그램 알림 (UnboundLocalError 방지 - 안전한 값 사용)
         try:
-            notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
+            _success = success
+        except NameError:
+            _success = False
+        try:
+            _numbers = final_numbers
+        except NameError:
+            _numbers = []
+        try:
+            notify_lotto645_purchase(auto_games, len(manual_numbers), _success, numbers=_numbers)
         except Exception as notify_err:
             print(f"⚠️ 텔레그램 알림 전송 실패: {notify_err}")
         
-        return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': final_numbers if final_numbers else purchased_numbers}
+        return {'games': total_games if _success else 0, 'total_cost': total_games * 1000 if _success else 0, 'numbers': _numbers if _numbers else purchased_numbers}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")

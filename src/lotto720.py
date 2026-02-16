@@ -42,20 +42,25 @@ def purchase_lotto720(page: Page, total_amount: int = 10000) -> dict:
         try:
             print(f"\n🎟️ 연금복권720 구매 ({purchase_num + 1}/{num_purchases}) - 5게임 5,000원")
             
-            # Navigate to game page (데스크톱 URL - 연금복권은 모바일에서 iframe 이슈 있음)
+            # Navigate to game page (데스크톱 필수 - 모바일은 리다이렉트됨)
+            # 데스크톱 User-Agent/뷰포트 설정 후 이동
+            page.set_viewport_size({"width": 1920, "height": 1080})
+            page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+            
             page.goto("https://el.dhlottery.co.kr/game/LP72/game720.jsp", timeout=60000, wait_until="domcontentloaded")
             page.wait_for_load_state("networkidle", timeout=20000)
             time.sleep(3)
             
             current_url = page.url
             if "m.dhlottery.co.kr" in current_url:
-                print("  ⚠️ 모바일 리다이렉트 - 데스크톱 뷰포트로 재시도")
-                page.set_viewport_size({"width": 1920, "height": 1080})
-                page.goto("https://el.dhlottery.co.kr/game/LP72/game720.jsp", timeout=60000)
+                print("  ⚠️ 모바일 리다이렉트됨 - www 경유 재시도")
+                page.goto("https://www.dhlottery.co.kr", timeout=30000)
+                time.sleep(2)
+                page.goto("https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72", timeout=60000)
                 time.sleep(3)
             
             if "m.dhlottery.co.kr" in page.url:
-                print("  ⚠️ 연금복권 모바일 전용 - 이번 구매 건너뜀")
+                print("  ⚠️ 연금복권 모바일 전용 사이트 - 구매 건너뜀")
                 break
             
             iframe_exists = page.locator("#ifrm_tab").count() > 0
