@@ -710,8 +710,16 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': final_numbers}
 
     except Exception as e:
-        print(f"❌ Error during purchase: {e}")
-        notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, str(e))
+        error_msg = str(e)
+        print(f"❌ Error during purchase: {error_msg}")
+
+        # 네트워크 타임아웃/접속 장애는 실패 알림 대신 스킵 처리
+        timeout_markers = ["ERR_CONNECTION_TIMED_OUT", "Timeout", "net::ERR_", "Page.goto"]
+        if any(marker in error_msg for marker in timeout_markers):
+            print("⏭️ 로또 6/45 접속 장애로 이번 회차는 건너뜁니다.")
+            return {'games': 0, 'total_cost': 0, 'numbers': [], 'skipped': True, 'reason': 'network_timeout'}
+
+        notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, error_msg)
         raise
 
 

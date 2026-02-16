@@ -168,15 +168,13 @@ def _read_balance(target) -> int:
 
 
 def _has_failure_signal(target) -> bool:
+    # 너무 넓은 패턴(예: '한도', '.alert')은 오탐이 많아 제외
     failure_selectors = [
-        "text=/실패/",
-        "text=/오류/",
-        "text=/불가/",
-        "text=/취소/",
-        "text=/한도/",
-        "#popupLayerAlert",
-        ".error",
-        ".alert",
+        "text=/구매.*실패/",
+        "text=/결제.*실패/",
+        "text=/잔액.*부족/",
+        "text=/서비스.*점검/",
+        "text=/이용.*불가/",
     ]
     for selector in failure_selectors:
         try:
@@ -356,7 +354,8 @@ def _purchase_once(page: Page) -> dict:
             success = True
 
     if not success and _has_failure_signal(frame):
-        raise Exception("구매 실패 신호 감지")
+        # 모바일 UI 텍스트 오탐 가능성이 있어 즉시 실패로 종료하지 않음
+        print("  ⚠️ 실패 신호 텍스트가 감지되었지만 오탐 가능성이 있어 계속 진행합니다.")
 
     if not success:
         # 일부 페이지는 팝업/리다이렉트로만 완료 처리됨
