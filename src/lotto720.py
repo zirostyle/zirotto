@@ -206,6 +206,16 @@ def _read_sale_result(target) -> str:
     return ""
 
 
+def _is_visible(target, selector: str, timeout: int = 800) -> bool:
+    try:
+        el = target.locator(selector)
+        if el.count() == 0:
+            return False
+        return el.first.is_visible(timeout=timeout)
+    except Exception:
+        return False
+
+
 def _dump_interactive_labels(target, label: str) -> None:
     """
     디버깅용: 현재 화면의 주요 버튼/링크 텍스트를 출력합니다.
@@ -354,11 +364,34 @@ def _purchase_once(page: Page) -> dict:
 
     page.on("dialog", _on_dialog)
     try:
-        # 자동번호 -> 선택완료
+        # 모바일은 번호 선택 팝업(popup4)을 먼저 열어야 doAuto/doVerify가 정상 동작
         try:
             _click_first(
                 frame,
                 [
+                    "a:has-text('번호 선택하기')",
+                    "button:has-text('번호 선택하기')",
+                    "[onclick*='selNumberPopup']",
+                    ".btn_gray_st1.large.full",
+                ],
+                "번호 선택하기 버튼",
+                force=True,
+            )
+            time.sleep(1)
+        except Exception:
+            # 데스크톱/기타 화면에서는 팝업 없이 바로 선택이 가능한 경우가 있어 무시
+            pass
+
+        number_target = frame
+        if _is_visible(frame, "#popup4", timeout=1200):
+            number_target = frame.locator("#popup4")
+
+        # 자동번호 -> 선택완료
+        try:
+            _click_first(
+                number_target,
+                [
+                    "#popup4 .btn_wht.xsmall[onclick*='doAuto']",
                     ".lotto720_btn_auto_number",
                     "a:has-text('자동번호')",
                     "button:has-text('자동번호')",
@@ -374,13 +407,14 @@ def _purchase_once(page: Page) -> dict:
             )
         except Exception:
             _dump_interactive_labels(frame, "auto-button-fallback")
-            _click_keyword(frame, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
+            _click_keyword(number_target, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
 
         time.sleep(1)
         try:
             _click_first(
-                frame,
+                number_target,
                 [
+                    "#popup4 a[onclick*='doVerify']",
                     ".lotto720_btn_confirm_number",
                     "a:has-text('선택완료')",
                     "button:has-text('선택완료')",
@@ -393,7 +427,7 @@ def _purchase_once(page: Page) -> dict:
             )
         except Exception:
             _dump_interactive_labels(frame, "confirm-button-fallback")
-            _click_keyword(frame, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
+            _click_keyword(number_target, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
         time.sleep(1)
 
         payment_val = _read_amount(frame)
@@ -452,7 +486,13 @@ def _purchase_once(page: Page) -> dict:
         normalized_sale = sale_message.replace(" ", "")
 
         for msg, norm in zip(dialog_messages, normalized_dialogs):
-            if "실패" in norm or "불가" in norm:
+            if (
+                "실패" in norm
+                or "불가" in norm
+                or "선택해" in norm
+                or "오류" in norm
+                or "없습니다" in norm
+            ):
                 raise Exception(f"구매 실패 dialog 감지: {msg}")
 
         if "구매가능한티켓이없습니다" in normalized_sale:
@@ -463,7 +503,8 @@ def _purchase_once(page: Page) -> dict:
             raise Exception("구매 실패 신호 감지")
 
         success_detected = False
-        if "구매가완료되었습니다" in normalized_sale or "부분적으로완료" in normalized_sale:
+        sale_popup_visible = _is_visible(frame, "#popup1", timeout=1200)
+        if sale_popup_visible and ("구매가완료되었습니다" in normalized_sale or "부분적으로완료" in normalized_sale):
             success_detected = True
         elif any(("구매완료" in norm or "부분적으로완료" in norm) for norm in normalized_dialogs):
             success_detected = True
