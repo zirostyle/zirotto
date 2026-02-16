@@ -184,6 +184,33 @@ def _has_failure_signal(target) -> bool:
     return False
 
 
+def _dump_interactive_labels(target, label: str) -> None:
+    """
+    디버깅용: 현재 화면의 주요 버튼/링크 텍스트를 출력합니다.
+    """
+    try:
+        rows = target.evaluate(
+            """
+            () => {
+                const nodes = Array.from(document.querySelectorAll("button,a,input[type='button'],input[type='submit'],label"));
+                const norm = (s) => (s || "").replace(/\\s+/g, " ").trim();
+                return nodes.slice(0, 120).map(n => {
+                    const text = norm(n.textContent) || norm(n.value);
+                    const id = n.id || "";
+                    const cls = n.className || "";
+                    const onclick = n.getAttribute("onclick") || "";
+                    return `${text} | id=${id} | class=${cls} | onclick=${onclick}`.trim();
+                }).filter(Boolean);
+            }
+            """
+        )
+        print(f"  [DEBUG:{label}] interactive candidates:")
+        for row in rows[:40]:
+            print(f"    - {row}")
+    except Exception as e:
+        print(f"  [DEBUG:{label}] interactive dump failed: {e}")
+
+
 def _get_frame(page: Page):
     """720 화면이 iframe인지 직접 페이지인지 감지하여 반환합니다."""
     iframe_exists = page.locator("#ifrm_tab").count() > 0
@@ -269,6 +296,7 @@ def _purchase_once(page: Page) -> dict:
             force=True,
         )
     except Exception:
+        _dump_interactive_labels(frame, "auto-button-fallback")
         _click_keyword(frame, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
 
     time.sleep(1)
@@ -285,6 +313,7 @@ def _purchase_once(page: Page) -> dict:
             "선택완료 버튼",
         )
     except Exception:
+        _dump_interactive_labels(frame, "confirm-button-fallback")
         _click_keyword(frame, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
     time.sleep(1)
 
@@ -310,6 +339,7 @@ def _purchase_once(page: Page) -> dict:
             "구매하기 버튼",
         )
     except Exception:
+        _dump_interactive_labels(frame, "buy-button-fallback")
         _click_keyword(frame, ["구매하기", "구매"], "구매하기 버튼")
     time.sleep(1)
 
@@ -323,6 +353,7 @@ def _purchase_once(page: Page) -> dict:
     try:
         _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
     except Exception:
+        _dump_interactive_labels(frame, "final-confirm-fallback")
         _click_keyword(frame, ["확인", "결제", "구매"], "최종 확인 버튼")
     time.sleep(3)
 
@@ -366,6 +397,7 @@ def _purchase_once(page: Page) -> dict:
             pass
 
     if not success:
+        _dump_interactive_labels(frame, "verify-failed")
         raise Exception("구매 완료 검증 실패")
 
     return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택", "verified": True}
