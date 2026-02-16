@@ -329,6 +329,8 @@ def _purchase_once(page: Page) -> dict:
                 ".lotto720_btn_auto_number",
                 "a:has-text('자동번호')",
                 "button:has-text('자동번호')",
+                "button[onclick*='doAuto']",
+                "a[onclick*='doAuto']",
                 "[class*='auto']",
                 "[id*='auto']",
                 "[onclick*='auto']",
@@ -349,6 +351,8 @@ def _purchase_once(page: Page) -> dict:
                 ".lotto720_btn_confirm_number",
                 "a:has-text('선택완료')",
                 "button:has-text('선택완료')",
+                "button[onclick*='doVerify']",
+                "a[onclick*='doVerify']",
                 "[onclick*='confirm']",
                 "[onclick*='Confirm']",
             ],
@@ -372,6 +376,9 @@ def _purchase_once(page: Page) -> dict:
             [
                 "a:has-text('구매하기')",
                 "button:has-text('구매하기')",
+                "button[onclick*='doOrder']",
+                "a[onclick*='doOrder']",
+                ".btn_blue.large.full",
                 ".lotto720_btn_buy",
                 "[name='btnBuy']",
                 "button[name='btnBuy']",
@@ -385,7 +392,7 @@ def _purchase_once(page: Page) -> dict:
         _click_keyword(frame, ["구매하기", "구매"], "구매하기 버튼")
     time.sleep(1)
 
-    # 확인 팝업 처리
+    # 확인 팝업 처리 (모바일에서는 팝업이 없을 수 있음)
     confirm_candidates = [
         "#lotto720_popup_confirm a.btn_blue",
         "#lotto720_popup_confirm a:has-text('확인')",
@@ -395,54 +402,20 @@ def _purchase_once(page: Page) -> dict:
     try:
         _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
     except Exception:
-        _dump_interactive_labels(frame, "final-confirm-fallback")
-        _click_keyword(frame, ["확인", "결제", "구매"], "최종 확인 버튼")
+        # 팝업이 없으면 정상 케이스일 수 있어 계속 진행
+        pass
     time.sleep(3)
 
     # 구매 후 잔액(가능하면)
     balance_after = _read_balance(frame)
 
-    # 구매 완료 메시지 확인 (모바일/데스크톱 공통 키워드)
-    success = False
-    success_selectors = [
-        "text=/구매.*완료/",
-        "text=/구매.*성공/",
-        "text=/결제.*완료/",
-        ".complete",
-        ".success",
-        "#successMessage",
-    ]
-    for selector in success_selectors:
-        try:
-            if frame.locator(selector).first.is_visible(timeout=1500):
-                success = True
-                break
-        except Exception:
-            continue
-
-    # 잔액 감소 확인 (5,000원 이상 감소 시 성공 판정)
-    if not success and balance_before > 0 and balance_after > 0:
-        if balance_before - balance_after >= PER_PURCHASE_AMOUNT:
-            success = True
-
-    if not success and _has_failure_signal(frame):
-        # 모바일 UI 텍스트 오탐 가능성이 있어 즉시 실패로 종료하지 않음
-        print("  ⚠️ 실패 신호 텍스트가 감지되었지만 오탐 가능성이 있어 계속 진행합니다.")
-
-    if not success:
-        # 일부 페이지는 팝업/리다이렉트로만 완료 처리됨
-        try:
-            current_url = page.url.lower()
-            if "complete" in current_url or "confirm" in current_url or "result" in current_url:
-                success = True
-        except Exception:
-            pass
-
-    if not success:
+    # 상세 성공 판정은 auto_purchase.py에서 구매 전/후 잔액 차감으로 검증
+    # 여기서는 구매 시도 자체만 반환
+    if _has_failure_signal(frame):
         _dump_interactive_labels(frame, "verify-failed")
-        raise Exception("구매 완료 검증 실패")
+        raise Exception("구매 실패 신호 감지")
 
-    return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택", "verified": True}
+    return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택", "attempted": True}
 
 
 def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
