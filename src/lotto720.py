@@ -227,7 +227,9 @@ def _purchase_once(page: Page) -> dict:
     time.sleep(1)
 
     payment_val = _read_amount(frame)
-    if payment_val != PER_PURCHASE_AMOUNT:
+    if payment_val == 0:
+        print("  ⚠️ 결제 금액 표시를 읽지 못했습니다. 구매 절차를 계속 진행합니다.")
+    elif payment_val != PER_PURCHASE_AMOUNT:
         raise Exception(f"결제 금액 불일치 (예상 {PER_PURCHASE_AMOUNT}원, 표시 {payment_val}원)")
 
     # 구매하기 -> 최종 확인
@@ -261,6 +263,37 @@ def _purchase_once(page: Page) -> dict:
     except Exception:
         _click_keyword(frame, ["확인", "결제", "구매"], "최종 확인 버튼")
     time.sleep(3)
+
+    # 구매 완료 메시지 확인 (모바일/데스크톱 공통 키워드)
+    success = False
+    success_selectors = [
+        "text=/구매.*완료/",
+        "text=/구매.*성공/",
+        "text=/결제.*완료/",
+        ".complete",
+        ".success",
+        "#successMessage",
+    ]
+    for selector in success_selectors:
+        try:
+            if frame.locator(selector).first.is_visible(timeout=1500):
+                success = True
+                break
+        except Exception:
+            continue
+
+    if not success:
+        # 일부 페이지는 팝업/리다이렉트로만 완료 처리됨
+        try:
+            current_url = page.url.lower()
+            if "complete" in current_url or "confirm" in current_url or "result" in current_url:
+                success = True
+        except Exception:
+            pass
+
+    if not success:
+        print("  ⚠️ 구매 완료 메시지를 확인하지 못했습니다. 결과를 확인할 수 없습니다.")
+        raise Exception("구매 완료 확인 실패")
 
     return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택"}
 
