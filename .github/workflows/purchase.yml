@@ -46,6 +46,7 @@ jobs:
         echo "CHARGE_PIN=${{ secrets.CHARGE_PIN }}" >> .env
         echo "AUTO_GAMES=${{ secrets.AUTO_GAMES || '0' }}" >> .env
         echo "MANUAL_NUMBERS=${{ secrets.MANUAL_NUMBERS || '[]' }}" >> .env
+        echo "LOTTO720_AMOUNT=${{ secrets.LOTTO720_AMOUNT || '10000' }}" >> .env
         echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
         echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
         # Check file capability without exposing content

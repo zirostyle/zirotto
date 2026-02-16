@@ -4,7 +4,6 @@
 """
 import os
 import requests
-from typing import Optional
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
@@ -91,11 +90,19 @@ def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, 
     send_telegram_message(message)
 
 
-def notify_lotto720_purchase(success: bool, error_msg: str = None, numbers: str = None):
+def notify_lotto720_purchase(
+    success: bool,
+    error_msg: str = None,
+    numbers: str = None,
+    amount: int = 5000,
+    purchase_count: int = 1
+):
     """연금복권 720+ 구매 알림"""
     if success:
         message = "🎟️ <b>연금복권 720+ 구매 완료</b>\n\n"
-        message += "금액: 5,000원"
+        message += f"금액: {amount:,}원"
+        if purchase_count > 1:
+            message += f"\n구매 횟수: {purchase_count}회"
         if numbers:
             message += f"\n\n<b>구매 번호:</b>\n{numbers}"
     else:

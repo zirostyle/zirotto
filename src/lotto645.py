@@ -4,8 +4,6 @@ import re
 import sys
 import time
 from os import environ
-from pathlib import Path
-from dotenv import load_dotenv
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
 from telegram_notifier import notify_lotto645_purchase
@@ -91,6 +89,63 @@ def parse_arguments():
         print(f"  ./lotto645.py 3000          # Buy 3 auto games")
         print(f"  ./lotto645.py 1 2 3 4 5 6   # Buy 1 manual game with numbers 1,2,3,4,5,6")
         sys.exit(1)
+
+
+def _normalize_number_set(nums: list) -> list:
+    filtered = [int(n) for n in nums if 1 <= int(n) <= 45]
+    if len(filtered) < 6:
+        return []
+    candidate = filtered[:6]
+    if len(set(candidate)) != 6:
+        return []
+    return candidate
+
+
+def _extract_number_sets_from_text(text: str) -> list:
+    """
+    문자열에서 로또 번호 6개 세트를 추출합니다.
+    """
+    results = []
+    for line in (text or "").splitlines():
+        nums = [int(n) for n in re.findall(r"\b\d{1,2}\b", line)]
+        normalized = _normalize_number_set(nums)
+        if normalized:
+            results.append(normalized)
+    return results
+
+
+def _unique_number_sets(number_sets: list) -> list:
+    """
+    번호 세트 중복 제거 (정렬 기준으로 중복 판단)
+    """
+    unique = []
+    seen = set()
+    for nums in number_sets:
+        if not nums or len(nums) != 6:
+            continue
+        key = tuple(sorted(nums))
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(nums)
+    return unique
+
+
+def _extract_from_selectors(page, selectors: list, limit: int = 20) -> list:
+    """
+    여러 셀렉터를 순회하며 번호 세트를 추출합니다.
+    """
+    found = []
+    for selector in selectors:
+        try:
+            loc = page.locator(selector)
+            count = min(loc.count(), limit)
+            for i in range(count):
+                text = loc.nth(i).inner_text(timeout=1500).strip()
+                found.extend(_extract_number_sets_from_text(text))
+        except Exception:
+            continue
+    return _unique_number_sets(found)
 
 
 def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:
@@ -304,27 +359,26 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         # 구매 전 번호 추출 (화면에서 보이는 번호 저장)
         purchased_numbers = []
         try:
-            # 선택된 번호들 추출
-            number_display = page.locator(".select_num, .num_box, [class*='selected']")
-            for i in range(min(total_games, 10)):  # 최대 10게임
-                try:
-                    game_el = number_display.nth(i)
-                    if game_el.count() > 0:
-                        text = game_el.inner_text()
-                        numbers = re.findall(r'\d+', text)
-                        if len(numbers) >= 6:
-                            purchased_numbers.append([int(n) for n in numbers[:6]])
-                except:
-                    pass
-            
-            # 수동 번호는 이미 알고 있음
-            if manual_numbers:
-                purchased_numbers = manual_numbers + purchased_numbers
+            pre_purchase_selectors = [
+                "#article table tbody tr",
+                "#numView tbody tr",
+                ".tbl_data_col tbody tr",
+                ".tbl_data_col tr",
+                ".select_num",
+                ".num_box",
+                ".list_my_number li",
+                ".list_my_number tr",
+                "[class*='selected']",
+            ]
+            purchased_numbers = _extract_from_selectors(page, pre_purchase_selectors, limit=30)
+            if purchased_numbers:
+                print(f"✅ 구매 전 번호 추출 성공: {len(purchased_numbers)}세트")
         except Exception as e:
             print(f"⚠️ 번호 추출 실패: {e}")
-            # 수동 번호만이라도 포함
-            if manual_numbers:
-                purchased_numbers = manual_numbers
+
+        # 수동 번호는 항상 포함
+        if manual_numbers:
+            purchased_numbers = _unique_number_sets(manual_numbers + purchased_numbers)
         
         # Purchase
         print("🛒 구매 버튼 클릭...")
@@ -384,6 +438,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         except Exception as e:
             print(f"⚠️ 구매 완료 메시지 확인 중 에러: {e}")
         
+        # 구매 완료 메시지/리다이렉트가 있으면 우선 성공으로 간주하고 검증 단계로 진행
+        success = purchase_completed_by_message
         if not success:
             # 스크린샷 저장
             page.screenshot(path="debug_lotto645_after_purchase.png")
@@ -417,6 +473,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 purchase_text = recent_purchase.inner_text(timeout=5000)
                 print(f"✅ 구매 내역 확인됨")
                 print(f"   {purchase_text[:150]}")
+                verified_numbers.extend(_extract_number_sets_from_text(purchase_text))
                 
                 # 오늘 날짜가 포함된 구매 내역인지 확인
                 from datetime import datetime, timezone, timedelta
@@ -443,17 +500,18 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                         time.sleep(2)
                     
                     # 상세 페이지에서 번호 추출
-                    number_elements = page.locator(".win_num, .num, [class*='number']")
-                    for i in range(number_elements.count()):
-                        try:
-                            text = number_elements.nth(i).inner_text()
-                            # 숫자 6개 추출
-                            nums = re.findall(r'\b\d{1,2}\b', text)
-                            if len(nums) >= 6:
-                                verified_numbers.append([int(n) for n in nums[:6]])
-                                print(f"  번호 {i+1}: {' '.join([f'{int(n):02d}' for n in nums[:6]])}")
-                        except:
-                            pass
+                    detail_selectors = [
+                        ".win_num",
+                        ".num",
+                        "[class*='number']",
+                        "table tbody tr",
+                        "ul li",
+                    ]
+                    detail_numbers = _extract_from_selectors(page, detail_selectors, limit=60)
+                    if detail_numbers:
+                        verified_numbers.extend(detail_numbers)
+                        for i, nums in enumerate(detail_numbers, 1):
+                            print(f"  번호 {i}: {' '.join([f'{n:02d}' for n in nums])}")
                 except Exception as e:
                     print(f"  ⚠️ 상세 번호 추출 실패: {e}")
                     # 번호 추출 실패해도 구매는 성공
@@ -498,7 +556,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 success = False
         
         # 최종 구매 번호 (검증된 번호 우선, 없으면 추출한 번호)
-        final_numbers = verified_numbers if verified_numbers else purchased_numbers
+        final_numbers = _unique_number_sets(verified_numbers if verified_numbers else purchased_numbers)
         
         # 구매한 번호 출력
         if final_numbers:
@@ -510,7 +568,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         
         # 텔레그램 알림
         notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
-        return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': purchased_numbers}
+        return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': final_numbers}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")
