@@ -148,6 +148,93 @@ def _extract_from_selectors(page, selectors: list, limit: int = 20) -> list:
     return _unique_number_sets(found)
 
 
+def _extract_number_sets_dom(page, max_sets: int = 20) -> list:
+    """
+    브라우저 DOM을 직접 스캔하여 번호 세트를 추출합니다.
+    셀렉터/텍스트 추출이 실패할 때의 최종 fallback 용도입니다.
+    """
+    try:
+        raw_sets = page.evaluate(
+            """
+            (maxSets) => {
+                const selectors = [
+                    "#article table tbody tr",
+                    "#numView tbody tr",
+                    ".tbl_data_col tbody tr",
+                    ".tbl_data_col tr",
+                    ".select_num",
+                    ".num_box",
+                    ".list_my_number li",
+                    ".list_my_number tr",
+                    "[class*='num']",
+                    "[class*='ball']"
+                ];
+
+                const seen = new Set();
+                const output = [];
+
+                const normalize = (arr) => {
+                    const filtered = arr
+                        .map(v => Number(v))
+                        .filter(v => Number.isInteger(v) && v >= 1 && v <= 45);
+                    if (filtered.length < 6) return null;
+                    const firstSix = filtered.slice(0, 6);
+                    if (new Set(firstSix).size !== 6) return null;
+                    const key = [...firstSix].sort((a, b) => a - b).join(",");
+                    if (seen.has(key)) return null;
+                    seen.add(key);
+                    return firstSix;
+                };
+
+                const collectFromElement = (el) => {
+                    const childTexts = Array.from(
+                        el.querySelectorAll("span,em,strong,li,td,div,p")
+                    )
+                        .map(n => (n.textContent || "").trim())
+                        .filter(Boolean);
+
+                    const directNums = [];
+                    for (const t of childTexts) {
+                        if (/^\\d{1,2}$/.test(t)) directNums.push(Number(t));
+                    }
+                    const n1 = normalize(directNums);
+                    if (n1) return n1;
+
+                    const txt = (el.textContent || "").replace(/\\s+/g, " ");
+                    const matches = txt.match(/\\b([1-9]|[1-3]\\d|4[0-5])\\b/g) || [];
+                    const n2 = normalize(matches.map(v => Number(v)));
+                    if (n2) return n2;
+                    return null;
+                };
+
+                for (const selector of selectors) {
+                    const nodes = Array.from(document.querySelectorAll(selector));
+                    for (const node of nodes) {
+                        const picked = collectFromElement(node);
+                        if (picked) {
+                            output.push(picked);
+                            if (output.length >= maxSets) return output;
+                        }
+                    }
+                }
+                return output;
+            }
+            """,
+            max_sets,
+        )
+        if isinstance(raw_sets, list):
+            parsed = []
+            for item in raw_sets:
+                if isinstance(item, list):
+                    normalized = _normalize_number_set(item)
+                    if normalized:
+                        parsed.append(normalized)
+            return _unique_number_sets(parsed)
+    except Exception:
+        pass
+    return []
+
+
 def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:
     """
     로또 6/45를 자동 및 수동으로 구매합니다 (이미 로그인된 페이지 사용).
@@ -371,6 +458,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 "[class*='selected']",
             ]
             purchased_numbers = _extract_from_selectors(page, pre_purchase_selectors, limit=30)
+            if not purchased_numbers:
+                purchased_numbers = _extract_number_sets_dom(page, max_sets=max(total_games, 10))
             if purchased_numbers:
                 print(f"✅ 구매 전 번호 추출 성공: {len(purchased_numbers)}세트")
         except Exception as e:
@@ -508,6 +597,8 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                         "ul li",
                     ]
                     detail_numbers = _extract_from_selectors(page, detail_selectors, limit=60)
+                    if not detail_numbers:
+                        detail_numbers = _extract_number_sets_dom(page, max_sets=max(total_games, 10))
                     if detail_numbers:
                         verified_numbers.extend(detail_numbers)
                         for i, nums in enumerate(detail_numbers, 1):

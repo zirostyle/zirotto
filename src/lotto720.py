@@ -169,6 +169,14 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
     total_cost = 0
 
     try:
+        # 모바일 판정 방지: 실행 페이지에 데스크톱 platform 고정
+        page.add_init_script("""
+            Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+            if (navigator.userAgentData) {
+                Object.defineProperty(navigator.userAgentData, 'mobile', { get: () => false });
+            }
+        """)
+
         print(f"🚀 연금복권720 구매 시작 (목표 금액: ₩{normalized_amount:,}, {purchase_count}회)")
 
         for i in range(purchase_count):

@@ -55,6 +55,13 @@ def run_all_tasks(playwright: Playwright) -> None:
         viewport={'width': 1920, 'height': 1080},
         user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     )
+    # 동행복권 플랫폼 판별(모바일 리다이렉트) 우회를 위해 platform/userAgentData를 데스크톱으로 고정
+    context.add_init_script("""
+        Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        if (navigator.userAgentData) {
+            Object.defineProperty(navigator.userAgentData, 'mobile', { get: () => false });
+        }
+    """)
     page = context.new_page()
     
     try:
