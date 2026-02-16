@@ -66,8 +66,8 @@ def run_all_tasks(playwright: Playwright) -> None:
         time.sleep(3)  # 잔액 확인 후 대기
         
         # Step 3: Charge if needed
-        MIN_REQUIRED = 10000  # 로또645 5게임 + 로또720 5게임
-        CHARGE_AMOUNT = 20000
+        MIN_REQUIRED = 20000  # 로또645 5게임 5,000 + 연금복권 10게임 10,000
+        CHARGE_AMOUNT = 30000
         
         if balance_info['available_amount'] < MIN_REQUIRED:
             print("\n" + "="*50)
@@ -89,9 +89,24 @@ def run_all_tasks(playwright: Playwright) -> None:
         else:
             print(f"\n✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
         
-        # Step 4: Skip Lotto 720 (현재 기술적 문제로 일시 중단)
-        print("\n⏭️  연금복권 720 구매 건너뜀 (현재 비활성화)")
-        print("   로또 6/45만 구매합니다.")
+        # Step 4: Buy Lotto 720 (연금복권 10,000원 = 10게임)
+        print("\n" + "="*50)
+        print("🎟️ 연금복권 720+ 구매 중... (10,000원)")
+        print("="*50)
+        
+        try:
+            # 연금복권은 데스크톱 페이지 필요 - 뷰포트 전환
+            page.set_viewport_size({"width": 1920, "height": 1080})
+            result_720 = purchase_lotto720(page, total_amount=10000)
+            page.set_viewport_size({"width": 390, "height": 844})  # 로또645용 모바일 복원
+            
+            if result_720 and result_720.get('games', 0) > 0:
+                print(f"✅ 연금복권 720+ 구매 완료! ({result_720['games']}게임, ₩{result_720['total_cost']:,})")
+            else:
+                print("⚠️ 연금복권 720+ 구매 실패 또는 건너뜀")
+        except Exception as e:
+            print(f"⚠️ 연금복권 720+ 오류 (로또645 진행): {e}")
+            page.set_viewport_size({"width": 390, "height": 844})
         
         # Step 5: Buy Lotto 645
         print("\n" + "="*50)

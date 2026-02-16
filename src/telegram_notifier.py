@@ -91,11 +91,11 @@ def notify_lotto645_purchase(auto_games: int, manual_games: int, success: bool, 
     send_telegram_message(message)
 
 
-def notify_lotto720_purchase(success: bool, error_msg: str = None, numbers: str = None):
+def notify_lotto720_purchase(success: bool, error_msg: str = None, numbers: str = None, total_amount: int = None):
     """연금복권 720+ 구매 알림"""
     if success:
         message = "🎟️ <b>연금복권 720+ 구매 완료</b>\n\n"
-        message += "금액: 5,000원"
+        message += f"금액: {total_amount or 5000:,}원"
         if numbers:
             message += f"\n\n<b>구매 번호:</b>\n{numbers}"
     else:
@@ -131,6 +131,47 @@ def notify_lotto_result(round_num: int, winning_numbers: list, bonus: int, prize
     else:
         message += "아쉽게도 당첨되지 않았습니다.\n"
         message += "다음 기회에 도전하세요! 💪"
+    
+    send_telegram_message(message)
+
+
+def notify_winning_results(lotto645: dict = None, lotto720: dict = None, my_prizes: dict = None):
+    """
+    로또 645 + 연금복권 720 당첨번호 및 구매 복권 당첨여부 통합 알림
+    
+    Args:
+        lotto645: {'round', 'winning_numbers', 'bonus', 'draw_date'}
+        lotto720: {'round', 'winning_numbers', 'draw_date'} (optional)
+        my_prizes: {'lotto645': {'1등': 1, ...}, 'lotto720': '당첨내역'} (optional)
+    """
+    message = "🎰 <b>매주 당첨 결과</b>\n\n"
+    
+    if lotto645:
+        message += f"🎱 <b>로또 6/45 {lotto645['round']}회</b>\n"
+        message += f"당첨번호: {' '.join([f'{n:02d}' for n in sorted(lotto645['winning_numbers'])])}"
+        message += f" + {lotto645['bonus']:02d}(보너스)\n"
+        message += f"추첨일: {lotto645.get('draw_date', '')}\n\n"
+        
+        if my_prizes and my_prizes.get('lotto645'):
+            prizes = my_prizes['lotto645']
+            if any(prizes.values()):
+                message += "🏆 <b>내 당첨:</b>\n"
+                for rank, count in prizes.items():
+                    if count > 0:
+                        message += f"  {rank}: {count}건\n"
+            else:
+                message += "내 복권: 당첨 없음\n"
+        elif my_prizes and 'lotto645' in my_prizes:
+            message += "내 복권: 당첨 없음\n"
+        message += "\n"
+    
+    if lotto720:
+        message += f"🎟️ <b>연금복권 720+ {lotto720.get('round', '')}회</b>\n"
+        if lotto720.get('winning_numbers'):
+            message += f"당첨번호: {' '.join([f'{n:02d}' for n in sorted(lotto720['winning_numbers'])])}\n"
+        message += f"추첨일: {lotto720.get('draw_date', '')}\n\n"
+        if my_prizes and my_prizes.get('lotto720'):
+            message += f"내 당첨: {my_prizes['lotto720']}\n"
     
     send_telegram_message(message)
 

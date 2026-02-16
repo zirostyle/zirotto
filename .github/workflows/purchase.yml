@@ -9,10 +9,8 @@ on:
       - 'src/**'
       - '.github/workflows/purchase.yml'
   schedule:
-    # 매일 오전 9:00 KST (UTC 00:00)
-    - cron: '0 0 * * *'
-    # 매일 오후 6:00 KST (UTC 09:00)
-    - cron: '0 9 * * *'
+    # 매주 월요일 오전 7:00 KST (UTC 일요일 22:00)
+    - cron: '0 22 * * 0'
 
 jobs:
   purchase:
@@ -54,10 +52,16 @@ jobs:
         # Check file capability without exposing content
         ls -la .env
 
-    - name: Run Lotto Purchase Workflow
+    - name: Check Lotto Results (당첨번호 + 구매복권 당첨여부)
       env:
         PYTHONPATH: src
-        VENV_PYTHON: python  # Use system python set up by actions
+      run: |
+        python src/check_results.py || echo "당첨결과 확인 실패해도 구매 진행"
+
+    - name: Run Lotto Purchase Workflow (로또645 + 연금복권)
+      env:
+        PYTHONPATH: src
+        VENV_PYTHON: python
       run: |
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh

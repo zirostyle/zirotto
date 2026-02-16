@@ -2,12 +2,14 @@
 """
 로또 당첨 결과 확인 스크립트
 마이페이지에서 최근 구매 내역을 조회하고 당첨 여부를 확인합니다.
+로또 6/45 + 연금복권 720+ 당첨번호 및 구매 복권 당첨여부 통합 알림
 """
 import re
 import requests
+import datetime
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
-from telegram_notifier import notify_lotto_result
+from telegram_notifier import notify_lotto_result, notify_winning_results
 
 
 def get_latest_lotto_winning_numbers() -> dict:
@@ -55,6 +57,30 @@ def get_latest_lotto_winning_numbers() -> dict:
             continue
     
     raise Exception("최신 당첨 번호를 가져올 수 없습니다.")
+
+
+def get_lotto720_winning_numbers() -> dict:
+    """
+    연금복권 720+ 최신 당첨 번호를 가져옵니다.
+    (동행복권 API 미공개 시 None 반환 - 마이페이지에서 확인)
+    
+    Returns:
+        dict: {'round': int, 'winning_numbers': list, 'draw_date': str} or None
+    """
+    url_base = "https://www.dhlottery.co.kr/common.do"
+    # 연금복권 API 시도 (최근 5회차만)
+    for method in ['getLp720WinNum', 'getLotto720']:
+        for round_num in range(200, 195, -1):
+            try:
+                r = requests.get(f"{url_base}?method={method}&drwNo={round_num}", timeout=5)
+                data = r.json()
+                if data.get('returnValue') == 'success':
+                    nums = [data[f'drwtNo{i}'] for i in range(1, 7) if f'drwtNo{i}' in data]
+                    if len(nums) == 6:
+                        return {'round': round_num, 'winning_numbers': nums, 'draw_date': data.get('drwNoDate', '')}
+            except:
+                pass
+    return None
 
 
 def get_my_lotto_purchases(page) -> list:
@@ -144,19 +170,27 @@ def check_winning(my_numbers: list, winning_numbers: list, bonus: int) -> tuple:
 
 
 def run(playwright: Playwright):
-    """당첨 결과 확인 메인 함수"""
-    print("🎰 로또 당첨 결과 확인")
+    """당첨 결과 확인 메인 함수 - 로또645 + 연금복권 720 통합"""
+    print("🎰 로또 당첨 결과 확인 (645 + 연금복권 720)")
     print("="*50)
     
-    # 1. 최신 당첨 번호 가져오기
+    # 1. 최신 당첨 번호 가져오기 (로또645)
+    lotto645_info = None
     try:
-        winning_info = get_latest_lotto_winning_numbers()
-        print(f"\n🎯 {winning_info['round']}회 당첨 번호:")
-        print(f"   {' '.join([f'{n:02d}' for n in winning_info['winning_numbers']])}")
-        print(f"   + 보너스: {winning_info['bonus']:02d}")
-        print(f"   추첨일: {winning_info['draw_date']}")
+        lotto645_info = get_latest_lotto_winning_numbers()
+        print(f"\n🎱 로또645 {lotto645_info['round']}회:")
+        print(f"   {' '.join([f'{n:02d}' for n in lotto645_info['winning_numbers']])} + {lotto645_info['bonus']:02d}(보너스)")
     except Exception as e:
-        print(f"❌ 당첨 번호 조회 실패: {e}")
+        print(f"❌ 로또645 당첨 번호 조회 실패: {e}")
+    
+    # 1-2. 연금복권 720 당첨 번호
+    lotto720_info = get_lotto720_winning_numbers()
+    if lotto720_info:
+        print(f"\n🎟️ 연금복권720 {lotto720_info['round']}회: {' '.join([f'{n:02d}' for n in lotto720_info['winning_numbers']])}")
+    else:
+        print("\n🎟️ 연금복권720: 당첨번호 API 조회 불가 (마이페이지에서 확인)")
+    
+    if not lotto645_info:
         return
     
     # 2. 내 구매 내역 확인
@@ -172,13 +206,8 @@ def run(playwright: Playwright):
         purchases = get_my_lotto_purchases(page)
         
         if not purchases:
-            print("\n⚠️ 최근 구매 내역이 없습니다.")
-            notify_lotto_result(
-                winning_info['round'],
-                winning_info['winning_numbers'],
-                winning_info['bonus'],
-                {}
-            )
+            print("\n⚠️ 최근 로또645 구매 내역이 없습니다.")
+            notify_winning_results(lotto645=lotto645_info, lotto720=lotto720_info, my_prizes={'lotto645': {}})
             return
         
         print(f"\n📋 구매 내역: {len(purchases)}개 회차")
@@ -186,46 +215,32 @@ def run(playwright: Playwright):
         # 3. 해당 회차 구매 내역 찾기
         my_purchase = None
         for p in purchases:
-            if p['round'] == winning_info['round']:
+            if p['round'] == lotto645_info['round']:
                 my_purchase = p
                 break
         
-        if not my_purchase:
-            print(f"\n⚠️ {winning_info['round']}회 구매 내역이 없습니다.")
-            notify_lotto_result(
-                winning_info['round'],
-                winning_info['winning_numbers'],
-                winning_info['bonus'],
-                {}
-            )
-            return
-        
-        # 4. 당첨 확인
-        print(f"\n🎫 {winning_info['round']}회 구매 번호:")
         prizes = {}
+        if not my_purchase:
+            print(f"\n⚠️ {lotto645_info['round']}회 구매 내역이 없습니다.")
+        else:
+            # 4. 당첨 확인
+            print(f"\n🎫 {lotto645_info['round']}회 구매 번호:")
+            for i, numbers in enumerate(my_purchase['numbers'], 1):
+                print(f"   {i}. {' '.join([f'{n:02d}' for n in sorted(numbers)])}")
+                rank, match_count = check_winning(
+                    numbers, lotto645_info['winning_numbers'], lotto645_info['bonus']
+                )
+                if rank:
+                    print(f"      🎉 {rank} 당첨!")
+                    prizes[rank] = prizes.get(rank, 0) + 1
+                else:
+                    print(f"      ({match_count}개 일치)")
         
-        for i, numbers in enumerate(my_purchase['numbers'], 1):
-            print(f"   {i}. {' '.join([f'{n:02d}' for n in sorted(numbers)])}")
-            
-            rank, match_count = check_winning(
-                numbers,
-                winning_info['winning_numbers'],
-                winning_info['bonus']
-            )
-            
-            if rank:
-                print(f"      🎉 {rank} 당첨! ({match_count}개 일치)")
-                prizes[rank] = prizes.get(rank, 0) + 1
-            else:
-                print(f"      ({match_count}개 일치)")
-        
-        # 5. 텔레그램 알림
-        notify_lotto_result(
-            winning_info['round'],
-            winning_info['winning_numbers'],
-            winning_info['bonus'],
-            prizes if prizes else {}
-        )
+        # 5. 텔레그램 통합 알림 (로또645 + 연금복권 + 당첨여부)
+        my_prizes = {'lotto645': prizes}
+        if lotto720_info:
+            my_prizes['lotto720'] = "마이페이지에서 확인"
+        notify_winning_results(lotto645=lotto645_info, lotto720=lotto720_info, my_prizes=my_prizes)
         
         if prizes:
             print(f"\n🎉 축하합니다! 당첨!")
