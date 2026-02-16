@@ -2,17 +2,15 @@ name: Lotto Purchase (Run on GitHub) - Auto
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/**'
-      - '.github/workflows/purchase.yml'
   schedule:
     # 매일 오전 9:00 KST (UTC 00:00)
     - cron: '0 0 * * *'
     # 매일 오후 6:00 KST (UTC 09:00)
     - cron: '0 9 * * *'
+
+concurrency:
+  group: lotto-purchase-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   purchase:

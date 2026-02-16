@@ -16,7 +16,7 @@ import json
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
 from balance import get_balance
-from telegram_notifier import notify_balance, notify_charge
+from telegram_notifier import notify_balance, notify_charge, notify_lotto720_purchase
 
 # Import functions
 from charge import charge_balance
@@ -107,6 +107,14 @@ def run_all_tasks(playwright: Playwright) -> None:
                 # 충전 실패해도 현재 잔액으로 계속 진행
         else:
             print(f"\n✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
+
+        # 720 구매 직전 잔액 스냅샷 (검증용)
+        try:
+            pre_720_balance_info = get_balance(page)
+            pre_720_available = pre_720_balance_info['available_amount']
+            print(f"📌 720 구매 전 구매가능 금액: ₩{pre_720_available:,}")
+        except Exception:
+            pre_720_available = balance_info['available_amount']
         
         # Step 4: Buy Lotto 720
         print("\n" + "="*50)
@@ -115,12 +123,35 @@ def run_all_tasks(playwright: Playwright) -> None:
 
         try:
             result_720 = purchase_lotto720(page, lotto720_amount)
-            if result_720 and result_720.get('total_cost', 0) > 0:
+            # 실제 구매 검증: 구매 전후 잔액 차이 확인
+            post_720_balance = None
+            try:
+                post_720_info = get_balance(page)
+                post_720_balance = post_720_info['available_amount']
+            except Exception:
+                pass
+
+            verified = False
+            if post_720_balance is not None:
+                spent = pre_720_available - post_720_balance
+                if spent >= lotto720_amount:
+                    verified = True
+                    print(f"✅ 연금복권 720 구매 검증 성공 (차감: ₩{spent:,})")
+
+            if result_720 and result_720.get('total_cost', 0) > 0 and verified:
                 print(f"✅ 연금복권 720 구매 완료! (₩{result_720['total_cost']:,})")
+                notify_lotto720_purchase(
+                    True,
+                    numbers=result_720.get('numbers'),
+                    amount=result_720['total_cost'],
+                    purchase_count=max(1, result_720['total_cost'] // 5000),
+                )
             else:
-                print("⚠️ 연금복권 720 구매 실패 - 결과를 확인할 수 없습니다.")
+                print("⚠️ 연금복권 720 구매 미검증 - 성공 알림을 보내지 않습니다.")
+                notify_lotto720_purchase(False, "구매내역/잔액 차감 검증 실패")
         except Exception as e:
             print(f"❌ 연금복권 720 구매 실패: {e}")
+            notify_lotto720_purchase(False, str(e))
             print("   로또 6/45 구매는 계속 진행합니다.")
         
         # Step 5: Buy Lotto 645

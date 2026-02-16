@@ -7,7 +7,6 @@ import re
 from os import environ
 from playwright.sync_api import Playwright, sync_playwright, Page
 from login import login
-from telegram_notifier import notify_lotto720_purchase
 
 PER_PURCHASE_AMOUNT = 5000
 DEFAULT_TARGET_AMOUNT = 10000
@@ -367,10 +366,9 @@ def _purchase_once(page: Page) -> dict:
             pass
 
     if not success:
-        # 모바일 UI 변경 등으로 완료 검증 지표가 누락될 수 있어, 실패 대신 경고 처리
-        print("  ⚠️ 구매 완료 검증 신호가 부족합니다. 이번 회차는 성공 추정으로 진행합니다.")
+        raise Exception("구매 완료 검증 실패")
 
-    return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택"}
+    return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택", "verified": True}
 
 
 def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
@@ -396,13 +394,11 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
 
         print(f"✅ 연금복권 720+ 구매 완료! (총 {total_cost:,}원)")
         numbers_text = f"자동 선택 ({purchase_count}회 구매)"
-        notify_lotto720_purchase(True, numbers=numbers_text, amount=total_cost, purchase_count=purchase_count)
-        return {"games": total_games, "total_cost": total_cost, "numbers": numbers_text}
+        return {"games": total_games, "total_cost": total_cost, "numbers": numbers_text, "verified": True}
 
     except Exception as e:
         error_msg = str(e)
         print(f"❌ 연금복권 720+ 구매 실패: {error_msg}")
-        notify_lotto720_purchase(False, error_msg, amount=total_cost, purchase_count=purchase_count)
         raise
 
 
