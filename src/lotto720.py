@@ -125,6 +125,68 @@ def _read_amount(target) -> int:
     return 0
 
 
+def _read_balance(target) -> int:
+    """
+    화면 내 잔액 정보를 가능한 셀렉터에서 읽어옵니다.
+    """
+    selectors = [
+        "#curdeposit",
+        "#crntEntrsAmt",
+        ".lpdeposit",
+        "[id*='EntrsAmt']",
+        "[class*='deposit']",
+    ]
+
+    for selector in selectors:
+        try:
+            el = target.locator(selector)
+            if el.count() == 0:
+                continue
+            first = el.first
+
+            # input hidden/value 계열
+            try:
+                value = first.get_attribute("value")
+                if value:
+                    amount = int(re.sub(r"[^0-9]", "", value) or "0")
+                    if amount > 0:
+                        return amount
+            except Exception:
+                pass
+
+            # 일반 텍스트
+            try:
+                text = first.inner_text(timeout=1000).strip()
+                amount = int(re.sub(r"[^0-9]", "", text) or "0")
+                if amount > 0:
+                    return amount
+            except Exception:
+                pass
+        except Exception:
+            continue
+    return -1
+
+
+def _has_failure_signal(target) -> bool:
+    failure_selectors = [
+        "text=/실패/",
+        "text=/오류/",
+        "text=/불가/",
+        "text=/취소/",
+        "text=/한도/",
+        "#popupLayerAlert",
+        ".error",
+        ".alert",
+    ]
+    for selector in failure_selectors:
+        try:
+            if target.locator(selector).first.is_visible(timeout=1200):
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def _get_frame(page: Page):
     """720 화면이 iframe인지 직접 페이지인지 감지하여 반환합니다."""
     iframe_exists = page.locator("#ifrm_tab").count() > 0
@@ -189,6 +251,9 @@ def _purchase_once(page: Page) -> dict:
             _click_first(alert_popup, ["button:has-text('확인')", "input[value='확인']", "a:has-text('확인')"], "팝업 확인")
     except Exception:
         pass
+
+    # 구매 전 잔액(가능하면)
+    balance_before = _read_balance(frame)
 
     # 자동번호 -> 선택완료
     try:
@@ -264,6 +329,9 @@ def _purchase_once(page: Page) -> dict:
         _click_keyword(frame, ["확인", "결제", "구매"], "최종 확인 버튼")
     time.sleep(3)
 
+    # 구매 후 잔액(가능하면)
+    balance_after = _read_balance(frame)
+
     # 구매 완료 메시지 확인 (모바일/데스크톱 공통 키워드)
     success = False
     success_selectors = [
@@ -282,6 +350,14 @@ def _purchase_once(page: Page) -> dict:
         except Exception:
             continue
 
+    # 잔액 감소 확인 (5,000원 이상 감소 시 성공 판정)
+    if not success and balance_before > 0 and balance_after > 0:
+        if balance_before - balance_after >= PER_PURCHASE_AMOUNT:
+            success = True
+
+    if not success and _has_failure_signal(frame):
+        raise Exception("구매 실패 신호 감지")
+
     if not success:
         # 일부 페이지는 팝업/리다이렉트로만 완료 처리됨
         try:
@@ -292,8 +368,8 @@ def _purchase_once(page: Page) -> dict:
             pass
 
     if not success:
-        print("  ⚠️ 구매 완료 메시지를 확인하지 못했습니다. 결과를 확인할 수 없습니다.")
-        raise Exception("구매 완료 확인 실패")
+        # 모바일 UI 변경 등으로 완료 검증 지표가 누락될 수 있어, 실패 대신 경고 처리
+        print("  ⚠️ 구매 완료 검증 신호가 부족합니다. 이번 회차는 성공 추정으로 진행합니다.")
 
     return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택"}
 

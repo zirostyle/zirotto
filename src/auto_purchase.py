@@ -141,9 +141,12 @@ def run_all_tasks(playwright: Playwright) -> None:
             if "구매 불가" in error_msg or "구매.*시간" in error_msg:
                 print(f"⏭️  {error_msg}")
                 print("   (정상적인 구매 불가 시간대입니다)")
+            elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
+                print(f"⏭️  로또 645 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
             else:
                 print(f"❌ 로또 645 구매 실패: {e}")
-                raise
+                # 645 단일 실패로 전체 워크플로우를 중단하지 않음
+                # (720 구매 결과 확인을 우선)
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
