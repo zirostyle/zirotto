@@ -249,6 +249,48 @@ def _navigate_to_lotto720(page: Page):
 
     if mobile_detected:
         page.locator("body").first.wait_for(state="attached", timeout=15000)
+
+        # 모바일 메인에서 720 바로구매 버튼 클릭 시도
+        try:
+            mobile_direct_selectors = [
+                "#pt720ImdtPrchs",
+                "#btnMoPtgmPrchs",
+                ".btnBuyPt720",
+                "a:has-text('연금복권720+')",
+                "button:has-text('연금복권720+')",
+            ]
+            for selector in mobile_direct_selectors:
+                try:
+                    el = page.locator(selector)
+                    if el.count() > 0:
+                        el.first.click(timeout=3000, force=True)
+                        page.wait_for_load_state("domcontentloaded", timeout=20000)
+                        time.sleep(2)
+                        if "game_mobile/pension720" in page.url:
+                            print(f"  ✅ 모바일 720 구매 페이지 진입: {page.url}")
+                            return page
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        # 직접 URL 진입 fallback
+        mobile_urls = [
+            "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+            "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        ]
+        for murl in mobile_urls:
+            try:
+                page.goto(murl, timeout=60000, wait_until="domcontentloaded")
+                page.wait_for_load_state("networkidle", timeout=20000)
+                time.sleep(2)
+                if "pension720" in page.url:
+                    print(f"  ✅ 모바일 720 URL 직접 진입 성공: {page.url}")
+                    return page
+            except Exception:
+                continue
+
+        # 실패 시 현재 페이지 반환 (상위 로직에서 디버그 덤프/검증)
         return page
 
     raise Exception(f"연금복권 페이지 진입 실패 ({last_url})")
