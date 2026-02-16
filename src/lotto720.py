@@ -44,6 +44,64 @@ def _click_first(target, selectors: list, label: str, timeout: int = 5000, force
     raise Exception(f"{label} 요소를 찾지 못했습니다: {selectors}")
 
 
+def _click_keyword(target, keywords: list, label: str, timeout: int = 5000) -> str:
+    """
+    키워드 기반으로 버튼/링크/입력을 찾아 클릭합니다.
+    """
+    selector_candidates = []
+    for kw in keywords:
+        selector_candidates.extend(
+            [
+                f"button:has-text('{kw}')",
+                f"a:has-text('{kw}')",
+                f"label:has-text('{kw}')",
+                f"input[value*='{kw}']",
+                f"[title*='{kw}']",
+                f"[aria-label*='{kw}']",
+            ]
+        )
+
+    for selector in selector_candidates:
+        try:
+            el = target.locator(selector)
+            if el.count() > 0 and el.first.is_visible(timeout=1200):
+                el.first.click(timeout=timeout, force=True)
+                return selector
+        except Exception:
+            continue
+
+    # Final fallback: DOM 직접 탐색 클릭
+    for kw in keywords:
+        try:
+            clicked = target.evaluate(
+                """
+                (keyword) => {
+                    const nodes = Array.from(document.querySelectorAll("button,a,label,input,span,div"));
+                    const norm = (s) => (s || "").replace(/\\s+/g, " ").trim();
+                    const lower = keyword.toLowerCase();
+                    for (const n of nodes) {
+                        const text = norm(n.textContent);
+                        const value = norm(n.value);
+                        const title = norm(n.getAttribute("title"));
+                        const onclick = norm(n.getAttribute("onclick"));
+                        const blob = `${text} ${value} ${title} ${onclick}`.toLowerCase();
+                        if (!blob.includes(lower)) continue;
+                        if (n.offsetParent === null && !["INPUT"].includes(n.tagName)) continue;
+                        try { n.click(); return true; } catch (_) {}
+                    }
+                    return false;
+                }
+                """,
+                kw,
+            )
+            if clicked:
+                return f"dom-keyword:{kw}"
+        except Exception:
+            continue
+
+    raise Exception(f"{label} 키워드 클릭 실패: {keywords}")
+
+
 def _read_amount(target) -> int:
     """결제 금액 텍스트를 읽어 숫자로 변환합니다."""
     selectors = [
@@ -133,18 +191,39 @@ def _purchase_once(page: Page) -> dict:
         pass
 
     # 자동번호 -> 선택완료
-    _click_first(
-        frame,
-        [".lotto720_btn_auto_number", "a:has-text('자동번호')", "button:has-text('자동번호')"],
-        "자동번호 버튼",
-        force=True,
-    )
+    try:
+        _click_first(
+            frame,
+            [
+                ".lotto720_btn_auto_number",
+                "a:has-text('자동번호')",
+                "button:has-text('자동번호')",
+                "[class*='auto']",
+                "[id*='auto']",
+                "[onclick*='auto']",
+                "[onclick*='Auto']",
+            ],
+            "자동번호 버튼",
+            force=True,
+        )
+    except Exception:
+        _click_keyword(frame, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
+
     time.sleep(1)
-    _click_first(
-        frame,
-        [".lotto720_btn_confirm_number", "a:has-text('선택완료')", "button:has-text('선택완료')"],
-        "선택완료 버튼",
-    )
+    try:
+        _click_first(
+            frame,
+            [
+                ".lotto720_btn_confirm_number",
+                "a:has-text('선택완료')",
+                "button:has-text('선택완료')",
+                "[onclick*='confirm']",
+                "[onclick*='Confirm']",
+            ],
+            "선택완료 버튼",
+        )
+    except Exception:
+        _click_keyword(frame, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
     time.sleep(1)
 
     payment_val = _read_amount(frame)
@@ -152,11 +231,22 @@ def _purchase_once(page: Page) -> dict:
         raise Exception(f"결제 금액 불일치 (예상 {PER_PURCHASE_AMOUNT}원, 표시 {payment_val}원)")
 
     # 구매하기 -> 최종 확인
-    _click_first(
-        frame,
-        ["a:has-text('구매하기')", "button:has-text('구매하기')", ".lotto720_btn_buy"],
-        "구매하기 버튼",
-    )
+    try:
+        _click_first(
+            frame,
+            [
+                "a:has-text('구매하기')",
+                "button:has-text('구매하기')",
+                ".lotto720_btn_buy",
+                "[name='btnBuy']",
+                "button[name='btnBuy']",
+                "[onclick*='buy']",
+                "[onclick*='Buy']",
+            ],
+            "구매하기 버튼",
+        )
+    except Exception:
+        _click_keyword(frame, ["구매하기", "구매"], "구매하기 버튼")
     time.sleep(1)
 
     # 확인 팝업 처리
@@ -166,7 +256,10 @@ def _purchase_once(page: Page) -> dict:
         "button:has-text('확인')",
         "input[value='확인']",
     ]
-    _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
+    try:
+        _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
+    except Exception:
+        _click_keyword(frame, ["확인", "결제", "구매"], "최종 확인 버튼")
     time.sleep(3)
 
     return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택"}

@@ -148,6 +148,34 @@ def _extract_from_selectors(page, selectors: list, limit: int = 20) -> list:
     return _unique_number_sets(found)
 
 
+def _click_by_keyword(page, keywords: list, timeout: int = 4000) -> bool:
+    """
+    키워드 기반으로 버튼/링크/라벨 클릭을 시도합니다.
+    """
+    selectors = []
+    for kw in keywords:
+        selectors.extend(
+            [
+                f"button:has-text('{kw}')",
+                f"a:has-text('{kw}')",
+                f"label:has-text('{kw}')",
+                f"input[value*='{kw}']",
+                f"[title*='{kw}']",
+                f"[aria-label*='{kw}']",
+            ]
+        )
+
+    for selector in selectors:
+        try:
+            el = page.locator(selector)
+            if el.count() > 0:
+                el.first.click(timeout=timeout, force=True)
+                return True
+        except Exception:
+            continue
+    return False
+
+
 def _extract_number_sets_dom(page, max_sets: int = 20) -> list:
     """
     브라우저 DOM을 직접 스캔하여 번호 세트를 추출합니다.
@@ -410,19 +438,39 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                     print(f"  ❌ 실패: {selector}")
             
             if not clicked:
-                # Save HTML for debugging
-                with open("debug_lotto645.html", "w", encoding="utf-8") as f:
-                    f.write(page.content())
-                print("📄 HTML 저장: debug_lotto645.html")
-                raise Exception("❌ 자동 번호 선택 버튼을 찾을 수 없습니다")
+                print("  ⚠️ 자동 버튼 셀렉터 실패, 키워드 기반 클릭 시도...")
+                clicked = _click_by_keyword(page, ["자동", "자동선택", "자동 번호"])
+                if clicked:
+                    print("  ✅ 자동 버튼 클릭 성공: keyword fallback")
+
+            if not clicked:
+                print("  ⚠️ 자동 버튼을 찾지 못했습니다. 기본 선택 상태로 계속 진행합니다.")
             
             time.sleep(1)
             print(f"  게임 수 선택: {auto_games}게임")
-            page.select_option("#amoundApply", str(auto_games))
+            try:
+                page.select_option("#amoundApply", str(auto_games))
+            except Exception:
+                # amount selector fallback
+                amount_selectors = ["select#amoundApply", "select[name*='amound']", "select[name*='amount']"]
+                selected = False
+                for selector in amount_selectors:
+                    try:
+                        page.locator(selector).first.select_option(str(auto_games))
+                        selected = True
+                        break
+                    except Exception:
+                        continue
+                if not selected:
+                    print("  ⚠️ 게임 수 선택 셀렉터를 찾지 못했습니다.")
             time.sleep(1)
             
             print("  선택 완료 버튼 클릭...")
-            page.click("#btnSelectNum")
+            try:
+                page.click("#btnSelectNum")
+            except Exception:
+                if not _click_by_keyword(page, ["선택완료", "선택 완료", "완료", "확인"]):
+                    raise Exception("❌ 선택 완료 버튼을 찾을 수 없습니다")
             time.sleep(2)
             print(f'✅ 자동 {auto_games}게임 선택 완료')
 
