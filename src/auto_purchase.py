@@ -137,11 +137,24 @@ def run_all_tasks(playwright: Playwright) -> None:
                 pass
 
             verified = False
+            spent = None
             if post_720_balance is not None:
                 spent = pre_720_available - post_720_balance
+                print(f"📌 720 구매 후 구매가능 금액: ₩{post_720_balance:,} (차감: ₩{spent:,})")
                 if spent >= lotto720_amount:
                     verified = True
                     print(f"✅ 연금복권 720 구매 검증 성공 (차감: ₩{spent:,})")
+            else:
+                print("⚠️ 720 구매 후 잔액 조회 실패")
+
+            if result_720:
+                bb = result_720.get("balance_before")
+                ba = result_720.get("balance_after")
+                dialogs = result_720.get("dialogs") or []
+                if bb is not None or ba is not None:
+                    print(f"📌 720 내부 잔액 스냅샷: before={bb}, after={ba}")
+                if dialogs:
+                    print(f"📌 720 dialog: {dialogs}")
 
             if result_720 and result_720.get('total_cost', 0) > 0 and verified:
                 print(f"✅ 연금복권 720 구매 완료! (₩{result_720['total_cost']:,})")

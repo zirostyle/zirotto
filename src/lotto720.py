@@ -320,6 +320,17 @@ def _purchase_once(page: Page) -> dict:
 
     # 구매 전 잔액(가능하면)
     balance_before = _read_balance(frame)
+    dialog_messages = []
+
+    def _on_dialog(dialog):
+        try:
+            msg = dialog.message or ""
+            dialog_messages.append(msg)
+            dialog.accept()
+        except Exception:
+            pass
+
+    page.on("dialog", _on_dialog)
 
     # 자동번호 -> 선택완료
     try:
@@ -411,11 +422,24 @@ def _purchase_once(page: Page) -> dict:
 
     # 상세 성공 판정은 auto_purchase.py에서 구매 전/후 잔액 차감으로 검증
     # 여기서는 구매 시도 자체만 반환
+    for msg in dialog_messages:
+        normalized = msg.replace(" ", "")
+        if "실패" in normalized or "불가" in normalized:
+            raise Exception(f"구매 실패 dialog 감지: {msg}")
+
     if _has_failure_signal(frame):
         _dump_interactive_labels(frame, "verify-failed")
         raise Exception("구매 실패 신호 감지")
 
-    return {"games": 5, "total_cost": PER_PURCHASE_AMOUNT, "numbers": "자동 선택", "attempted": True}
+    return {
+        "games": 5,
+        "total_cost": PER_PURCHASE_AMOUNT,
+        "numbers": "자동 선택",
+        "attempted": True,
+        "balance_before": balance_before,
+        "balance_after": balance_after,
+        "dialogs": dialog_messages,
+    }
 
 
 def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
