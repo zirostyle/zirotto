@@ -13,6 +13,7 @@ Features:
 """
 import os
 import json
+from datetime import datetime, timedelta, timezone
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
 from balance import get_balance
@@ -45,6 +46,29 @@ def _safe_manual_games_count() -> int:
 def _is_enabled(name: str, default: str = "1") -> bool:
     raw = str(os.environ.get(name, default)).strip().lower()
     return raw not in {"0", "false", "no", "off"}
+
+
+def _is_lotto645_date_open() -> bool:
+    """
+    LOTTO645_ENABLE_FROM(YYYY-MM-DD) 날짜(한국시간)부터 6/45 구매를 허용합니다.
+    """
+    raw = str(os.environ.get("LOTTO645_ENABLE_FROM", "")).strip()
+    if not raw:
+        return True
+
+    try:
+        # Python 3.9 zoneinfo 우선 사용, 실패 시 UTC+9 고정 오프셋 사용
+        try:
+            from zoneinfo import ZoneInfo  # type: ignore
+            now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
+        except Exception:
+            now_kst = datetime.now(timezone(timedelta(hours=9)))
+
+        from_date = datetime.strptime(raw, "%Y-%m-%d").date()
+        return now_kst.date() >= from_date
+    except Exception:
+        print(f"⚠️ LOTTO645_ENABLE_FROM 형식이 올바르지 않습니다: '{raw}' (예: 2026-02-23)")
+        return True
 
 
 def _get_balance_resilient(page, attempts: int = 3):
@@ -205,7 +229,8 @@ def run_all_tasks(playwright: Playwright) -> None:
             notify_lotto720_purchase(False, str(e))
             print("   로또 6/45 구매는 계속 진행합니다.")
         
-        if _is_enabled("ENABLE_LOTTO645", "1"):
+        lotto645_enabled = _is_enabled("ENABLE_LOTTO645", "1") and _is_lotto645_date_open()
+        if lotto645_enabled:
             # Step 5: Buy Lotto 645
             print("\n" + "="*50)
             print("🎫 로또 645 구매 중...")
@@ -230,7 +255,13 @@ def run_all_tasks(playwright: Playwright) -> None:
                     print(f"❌ 로또 645 구매 실패: {e}")
                     # 645 단일 실패로 전체 워크플로우를 중단하지 않음
         else:
-            print("\n⏭️ 로또 6/45 구매는 비활성화되어 건너뜁니다. (ENABLE_LOTTO645=0)")
+            raw_from = str(os.environ.get("LOTTO645_ENABLE_FROM", "")).strip()
+            if not _is_enabled("ENABLE_LOTTO645", "1"):
+                print("\n⏭️ 로또 6/45 구매는 비활성화되어 건너뜁니다. (ENABLE_LOTTO645=0)")
+            elif raw_from:
+                print(f"\n⏭️ 로또 6/45 구매는 시작일({raw_from}, KST) 이전이라 건너뜁니다.")
+            else:
+                print("\n⏭️ 로또 6/45 구매를 건너뜁니다.")
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
