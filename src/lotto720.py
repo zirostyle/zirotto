@@ -77,22 +77,28 @@ def _get_frame(page: Page):
 
 def _navigate_to_lotto720(page: Page):
     """720 게임 화면으로 이동합니다."""
-    page.goto(
+    desktop_urls = [
         "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72",
-        timeout=60000,
-        wait_until="domcontentloaded",
-    )
-    page.wait_for_load_state("networkidle", timeout=30000)
-    time.sleep(2)
+        "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72&kind=1",
+    ]
 
-    current_url = page.url
-    print(f"  현재 URL: {current_url}")
-    if "m.dhlottery.co.kr" in current_url:
-        raise Exception("모바일 사이트로 리다이렉트됨")
+    last_url = ""
+    for idx, url in enumerate(desktop_urls, 1):
+        page.goto(url, timeout=60000, wait_until="domcontentloaded")
+        page.wait_for_load_state("networkidle", timeout=30000)
+        time.sleep(2)
 
-    frame = _get_frame(page)
-    frame.locator("body").first.wait_for(state="attached", timeout=15000)
-    return frame
+        last_url = page.url
+        print(f"  현재 URL (시도 {idx}): {last_url}")
+        if "m.dhlottery.co.kr" not in last_url:
+            frame = _get_frame(page)
+            frame.locator("body").first.wait_for(state="attached", timeout=15000)
+            return frame
+
+        # 모바일로 이동된 경우 데스크톱 URL로 재진입 시도
+        print("  ⚠️ 모바일 리다이렉트 감지, 데스크톱 URL 재시도")
+
+    raise Exception(f"모바일 사이트로 리다이렉트됨 ({last_url})")
 
 
 def _purchase_once(page: Page) -> dict:
@@ -171,6 +177,7 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
     try:
         # 모바일 판정 방지: 실행 페이지에 데스크톱 platform 고정
         page.add_init_script("""
+            Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Win32' });
             Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
             if (navigator.userAgentData) {
                 Object.defineProperty(navigator.userAgentData, 'mobile', { get: () => false });

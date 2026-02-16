@@ -57,6 +57,7 @@ def run_all_tasks(playwright: Playwright) -> None:
     )
     # 동행복권 플랫폼 판별(모바일 리다이렉트) 우회를 위해 platform/userAgentData를 데스크톱으로 고정
     context.add_init_script("""
+        Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'Win32' });
         Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
         if (navigator.userAgentData) {
             Object.defineProperty(navigator.userAgentData, 'mobile', { get: () => false });
