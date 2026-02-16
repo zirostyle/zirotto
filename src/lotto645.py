@@ -93,7 +93,7 @@ def parse_arguments():
         sys.exit(1)
 
 
-def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:
+def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None, use_mobile: bool = True) -> dict:
     """
     로또 6/45를 자동 및 수동으로 구매합니다 (이미 로그인된 페이지 사용).
     
@@ -101,9 +101,10 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         page: 이미 로그인된 Playwright Page 객체
         auto_games: 자동 구매 게임 수
         manual_numbers: 수동 구매 번호 리스트 (예: [[1,2,3,4,5,6], ...])
+        use_mobile: True일 경우 모바일 뷰포트 사용 (동행복권 모바일 구매 지원)
         
     Returns:
-        dict: {'games': int, 'total_cost': int}
+        dict: {'games': int, 'total_cost': int, 'numbers': list}
     """
     from datetime import datetime, timezone, timedelta
     
@@ -133,8 +134,20 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     
     print(f"✅ 구매 가능 시간입니다!")
     
+    # 성공 여부 변수 - 반드시 초기화 (모든 코드 경로에서 notify 시 참조)
+    success = False
+    final_numbers = []
+    
     try:
-
+        # 모바일 뷰포트 설정 (동행복권 모바일 구매 지원)
+        if use_mobile:
+            try:
+                page.set_viewport_size({"width": 390, "height": 844})
+                page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"})
+                print("  📱 모바일 뷰포트 적용 (390x844)")
+            except Exception as e:
+                print(f"  ⚠️ 모바일 뷰포트 설정 스킵: {e}")
+        
         # Navigate to game page with retry
         print("  로또645 페이지 이동 중...")
         
@@ -243,7 +256,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             page.screenshot(path="debug_lotto645_before_auto.png")
             print("📸 자동 선택 전 스크린샷 저장")
             
-            # Try multiple selectors for the auto number button
+            # Try multiple selectors for the auto number button (PC + 모바일 대응)
             auto_button_selectors = [
                 "#num2",
                 "input#num2",
@@ -251,7 +264,11 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 "input[type='radio'][value='2']",
                 "label[for='num2']",
                 "text=/자동/",
-                ".select_auto"
+                ".select_auto",
+                "[data-value='2']",
+                ".mode_auto",
+                "label:has-text('자동')",
+                "input[value='2']"
             ]
             
             clicked = False
@@ -276,7 +293,13 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             
             time.sleep(1)
             print(f"  게임 수 선택: {auto_games}게임")
-            page.select_option("#amoundApply", str(auto_games))
+            for amt_selector in ["#amoundApply", "#amountApply", "select[name='amoundApply']", "#gameCount", "select.game_count"]:
+                try:
+                    page.select_option(amt_selector, str(auto_games))
+                    print(f"  ✅ 게임 수 선택: {amt_selector}")
+                    break
+                except:
+                    pass
             time.sleep(1)
             
             print("  선택 완료 버튼 클릭...")
@@ -290,11 +313,16 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             print('⚠️  No games to purchase!')
             return {'games': 0, 'total_cost': 0, 'numbers': []}
 
-        # Verify payment amount
+        # Verify payment amount (PC/모바일 공통)
         time.sleep(1)
-        payment_amount_el = page.locator("#payAmt")
-        payment_text = payment_amount_el.inner_text().strip()
-        payment_amount = int(re.sub(r'[^0-9]', '', payment_text))
+        payment_amount = 0
+        for pay_sel in ["#payAmt", "[id*='payAmt']", ".pay_amt", "[class*='pay']"]:
+            try:
+                payment_text = page.locator(pay_sel).first.inner_text(timeout=3000).strip()
+                payment_amount = int(re.sub(r'[^0-9]', '', payment_text))
+                break
+            except:
+                pass
         expected_amount = total_games * 1000
         
         if payment_amount != expected_amount:
@@ -304,25 +332,46 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         # 구매 전 번호 추출 (화면에서 보이는 번호 저장)
         purchased_numbers = []
         try:
-            # 선택된 번호들 추출
-            number_display = page.locator(".select_num, .num_box, [class*='selected']")
-            for i in range(min(total_games, 10)):  # 최대 10게임
+            # 선택된 번호들 추출 - 여러 셀렉터 시도 (사이트 UI 변경 대응)
+            number_selectors = [
+                ".select_num", ".num_box", "[class*='selected']",
+                ".pub_nums", ".nums", "[class*='nums']",
+                ".ball", ".num"
+            ]
+            for selector in number_selectors:
                 try:
-                    game_el = number_display.nth(i)
-                    if game_el.count() > 0:
-                        text = game_el.inner_text()
-                        numbers = re.findall(r'\d+', text)
-                        if len(numbers) >= 6:
-                            purchased_numbers.append([int(n) for n in numbers[:6]])
+                    number_display = page.locator(selector)
+                    for i in range(min(total_games, 10)):
+                        try:
+                            game_el = number_display.nth(i)
+                            if game_el.count() > 0:
+                                text = game_el.inner_text()
+                                numbers = re.findall(r'\d+', text)
+                                # 1-45 범위의 중복 없는 6개 번호만 추출
+                                valid = []
+                                seen = set()
+                                for n in numbers:
+                                    num = int(n)
+                                    if 1 <= num <= 45 and num not in seen:
+                                        valid.append(num)
+                                        seen.add(num)
+                                    if len(valid) == 6:
+                                        break
+                                if len(valid) == 6:
+                                    purchased_numbers.append(valid)
+                        except:
+                            pass
+                    if purchased_numbers:
+                        break
                 except:
                     pass
             
-            # 수동 번호는 이미 알고 있음
+            # 수동 번호는 이미 알고 있음 (구매 순서: 수동 먼저, 자동 나중)
             if manual_numbers:
-                purchased_numbers = manual_numbers + purchased_numbers
+                auto_extracted = [p for p in purchased_numbers if p not in manual_numbers]
+                purchased_numbers = manual_numbers + auto_extracted[:auto_games]
         except Exception as e:
             print(f"⚠️ 번호 추출 실패: {e}")
-            # 수동 번호만이라도 포함
             if manual_numbers:
                 purchased_numbers = manual_numbers
         
@@ -384,7 +433,7 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         except Exception as e:
             print(f"⚠️ 구매 완료 메시지 확인 중 에러: {e}")
         
-        if not success:
+        if not purchase_completed_by_message:
             # 스크린샷 저장
             page.screenshot(path="debug_lotto645_after_purchase.png")
             print("📸 구매 후 스크린샷 저장: debug_lotto645_after_purchase.png")
@@ -436,27 +485,42 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 
                 # 구매 내역에서 번호 추출 시도
                 try:
-                    # 번호 영역 클릭하여 상세 보기
-                    detail_btn = recent_purchase.locator("a, button, .btn").first
-                    if detail_btn.count() > 0:
-                        detail_btn.click(timeout=3000)
-                        time.sleep(2)
-                    
-                    # 상세 페이지에서 번호 추출
-                    number_elements = page.locator(".win_num, .num, [class*='number']")
-                    for i in range(number_elements.count()):
+                    # 1) 테이블 행에서 직접 번호 추출 (번호 컬럼: nth(2) 또는 nth(3))
+                    for col_idx in [2, 3]:
                         try:
-                            text = number_elements.nth(i).inner_text()
-                            # 숫자 6개 추출
-                            nums = re.findall(r'\b\d{1,2}\b', text)
-                            if len(nums) >= 6:
-                                verified_numbers.append([int(n) for n in nums[:6]])
-                                print(f"  번호 {i+1}: {' '.join([f'{int(n):02d}' for n in nums[:6]])}")
+                            numbers_text = recent_purchase.locator("td").nth(col_idx).inner_text()
+                            for line in numbers_text.replace('\r', '\n').split('\n'):
+                                numbers = re.findall(r'\d+', line)
+                                if len(numbers) >= 6:
+                                    nums = [int(n) for n in numbers[:6]]
+                                    if all(1 <= n <= 45 for n in nums) and len(set(nums)) == 6:
+                                        verified_numbers.append(nums)
+                            if verified_numbers:
+                                break
                         except:
                             pass
+                    
+                    # 2) 번호가 없으면 상세 보기 클릭 후 추출
+                    if not verified_numbers:
+                        detail_btn = recent_purchase.locator("a, button, .btn").first
+                        if detail_btn.count() > 0:
+                            detail_btn.click(timeout=3000)
+                            time.sleep(2)
+                        
+                        number_elements = page.locator(".win_num, .num, [class*='number']")
+                        for i in range(min(number_elements.count(), 10)):
+                            try:
+                                text = number_elements.nth(i).inner_text()
+                                nums = re.findall(r'\b\d{1,2}\b', text)
+                                if len(nums) >= 6:
+                                    nlist = [int(n) for n in nums[:6]]
+                                    if all(1 <= n <= 45 for n in nlist) and len(set(nlist)) == 6:
+                                        verified_numbers.append(nlist)
+                                        print(f"  번호 {len(verified_numbers)}: {' '.join([f'{n:02d}' for n in nlist])}")
+                            except:
+                                pass
                 except Exception as e:
                     print(f"  ⚠️ 상세 번호 추출 실패: {e}")
-                    # 번호 추출 실패해도 구매는 성공
                 
                 # 추출된 번호가 없으면 화면에서 추출한 번호 사용
                 if not verified_numbers and purchased_numbers:
@@ -508,13 +572,28 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         else:
             print("\n⚠️ 구매 번호를 확인할 수 없습니다. 마이페이지에서 확인하세요.")
         
-        # 텔레그램 알림
-        notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
-        return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': purchased_numbers}
+        # 텔레그램 알림 (UnboundLocalError 방지 - 안전한 값 사용)
+        try:
+            _success = success
+        except NameError:
+            _success = False
+        try:
+            _numbers = final_numbers
+        except NameError:
+            _numbers = []
+        try:
+            notify_lotto645_purchase(auto_games, len(manual_numbers), _success, numbers=_numbers)
+        except Exception as notify_err:
+            print(f"⚠️ 텔레그램 알림 전송 실패: {notify_err}")
+        
+        return {'games': total_games if _success else 0, 'total_cost': total_games * 1000 if _success else 0, 'numbers': _numbers if _numbers else purchased_numbers}
 
     except Exception as e:
         print(f"❌ Error during purchase: {e}")
-        notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, str(e))
+        try:
+            notify_lotto645_purchase(auto_games, len(manual_numbers) if manual_numbers else 0, False, error_msg=str(e), numbers=final_numbers)
+        except Exception as notify_err:
+            print(f"⚠️ 텔레그램 알림 전송 실패: {notify_err}")
         raise
 
 
@@ -527,9 +606,12 @@ def run(playwright: Playwright, auto_games: int, manual_numbers: list) -> None:
         auto_games: 자동 구매 게임 수
         manual_numbers: 수동 구매 번호 리스트 (예: [[1,2,3,4,5,6], ...])
     """
-    # Create browser, context, and page
+    # Create browser, context, and page (모바일 뷰포트)
     browser = playwright.chromium.launch(headless=True)
-    context = browser.new_context()
+    context = browser.new_context(
+        viewport={'width': 390, 'height': 844},
+        user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1'
+    )
     page = context.new_page()
     
     # Perform login

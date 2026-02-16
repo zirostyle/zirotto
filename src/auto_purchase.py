@@ -32,12 +32,15 @@ def run_all_tasks(playwright: Playwright) -> None:
     print("🌐 브라우저 시작...")
     browser = playwright.chromium.launch(headless=True)
     
-    # Use desktop viewport and user agent
+    # 모바일 뷰포트 사용 (동행복권 모바일 구매 지원, 로또645 모바일 허용 반영)
     context = browser.new_context(
-        viewport={'width': 1920, 'height': 1080},
-        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        viewport={'width': 390, 'height': 844},
+        user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+        device_scale_factor=2,
+        is_mobile=True
     )
     page = context.new_page()
+    print("📱 모바일 뷰포트 적용 (390x844)")
     
     try:
         # Step 1: Login once
@@ -63,8 +66,8 @@ def run_all_tasks(playwright: Playwright) -> None:
         time.sleep(3)  # 잔액 확인 후 대기
         
         # Step 3: Charge if needed
-        MIN_REQUIRED = 10000  # 로또645 5게임 + 로또720 5게임
-        CHARGE_AMOUNT = 20000
+        MIN_REQUIRED = 20000  # 로또645 5게임 5,000 + 연금복권 10게임 10,000
+        CHARGE_AMOUNT = 30000
         
         if balance_info['available_amount'] < MIN_REQUIRED:
             print("\n" + "="*50)
@@ -86,9 +89,27 @@ def run_all_tasks(playwright: Playwright) -> None:
         else:
             print(f"\n✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
         
-        # Step 4: Skip Lotto 720 (현재 기술적 문제로 일시 중단)
-        print("\n⏭️  연금복권 720 구매 건너뜀 (현재 비활성화)")
-        print("   로또 6/45만 구매합니다.")
+        # Step 4: Buy Lotto 720 (연금복권 10,000원 = 10게임)
+        print("\n" + "="*50)
+        print("🎟️ 연금복권 720+ 구매 중... (10,000원)")
+        print("="*50)
+        
+        try:
+            # 연금복권은 데스크톱 페이지 필요 - 뷰포트+User-Agent 전환 (모바일 리다이렉트 방지)
+            page.set_viewport_size({"width": 1920, "height": 1080})
+            page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+            result_720 = purchase_lotto720(page, total_amount=10000)
+            page.set_viewport_size({"width": 390, "height": 844})  # 로또645용 모바일 복원
+            page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"})
+            
+            if result_720 and result_720.get('games', 0) > 0:
+                print(f"✅ 연금복권 720+ 구매 완료! ({result_720['games']}게임, ₩{result_720['total_cost']:,})")
+            else:
+                print("⚠️ 연금복권 720+ 구매 실패 또는 건너뜀 (모바일 리다이렉트 시 건너뜀)")
+                notify_lotto720_purchase(False, error_msg="모바일 리다이렉트 또는 구매 건너뜀")
+        except Exception as e:
+            print(f"⚠️ 연금복권 720+ 오류 (로또645 진행): {e}")
+            page.set_viewport_size({"width": 390, "height": 844})
         
         # Step 5: Buy Lotto 645
         print("\n" + "="*50)
