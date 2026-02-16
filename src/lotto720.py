@@ -184,6 +184,28 @@ def _has_failure_signal(target) -> bool:
     return False
 
 
+def _read_sale_result(target) -> str:
+    """
+    구매 결과 문구(.saleRetMsg)를 읽어옵니다.
+    """
+    selectors = [
+        ".saleRetMsg",
+        "#saleRetMsg",
+        "[class*='saleRetMsg']",
+    ]
+    for selector in selectors:
+        try:
+            el = target.locator(selector)
+            if el.count() == 0:
+                continue
+            text = (el.first.inner_text(timeout=1500) or "").strip()
+            if text:
+                return text
+        except Exception:
+            continue
+    return ""
+
+
 def _dump_interactive_labels(target, label: str) -> None:
     """
     디버깅용: 현재 화면의 주요 버튼/링크 텍스트를 출력합니다.
@@ -331,115 +353,142 @@ def _purchase_once(page: Page) -> dict:
             pass
 
     page.on("dialog", _on_dialog)
-
-    # 자동번호 -> 선택완료
     try:
-        _click_first(
-            frame,
-            [
-                ".lotto720_btn_auto_number",
-                "a:has-text('자동번호')",
-                "button:has-text('자동번호')",
-                "button[onclick*='doAuto']",
-                "a[onclick*='doAuto']",
-                "[class*='auto']",
-                "[id*='auto']",
-                "[onclick*='auto']",
-                "[onclick*='Auto']",
-            ],
-            "자동번호 버튼",
-            force=True,
-        )
-    except Exception:
-        _dump_interactive_labels(frame, "auto-button-fallback")
-        _click_keyword(frame, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
+        # 자동번호 -> 선택완료
+        try:
+            _click_first(
+                frame,
+                [
+                    ".lotto720_btn_auto_number",
+                    "a:has-text('자동번호')",
+                    "button:has-text('자동번호')",
+                    "button[onclick*='doAuto']",
+                    "a[onclick*='doAuto']",
+                    "[class*='auto']",
+                    "[id*='auto']",
+                    "[onclick*='auto']",
+                    "[onclick*='Auto']",
+                ],
+                "자동번호 버튼",
+                force=True,
+            )
+        except Exception:
+            _dump_interactive_labels(frame, "auto-button-fallback")
+            _click_keyword(frame, ["자동번호", "자동선택", "자동"], "자동번호 버튼")
 
-    time.sleep(1)
-    try:
-        _click_first(
-            frame,
-            [
-                ".lotto720_btn_confirm_number",
-                "a:has-text('선택완료')",
-                "button:has-text('선택완료')",
-                "button[onclick*='doVerify']",
-                "a[onclick*='doVerify']",
-                "[onclick*='confirm']",
-                "[onclick*='Confirm']",
-            ],
-            "선택완료 버튼",
-        )
-    except Exception:
-        _dump_interactive_labels(frame, "confirm-button-fallback")
-        _click_keyword(frame, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
-    time.sleep(1)
+        time.sleep(1)
+        try:
+            _click_first(
+                frame,
+                [
+                    ".lotto720_btn_confirm_number",
+                    "a:has-text('선택완료')",
+                    "button:has-text('선택완료')",
+                    "button[onclick*='doVerify']",
+                    "a[onclick*='doVerify']",
+                    "[onclick*='confirm']",
+                    "[onclick*='Confirm']",
+                ],
+                "선택완료 버튼",
+            )
+        except Exception:
+            _dump_interactive_labels(frame, "confirm-button-fallback")
+            _click_keyword(frame, ["선택완료", "선택 완료", "완료", "확인"], "선택완료 버튼")
+        time.sleep(1)
 
-    payment_val = _read_amount(frame)
-    if payment_val == 0:
-        print("  ⚠️ 결제 금액 표시를 읽지 못했습니다. 구매 절차를 계속 진행합니다.")
-    elif payment_val != PER_PURCHASE_AMOUNT:
-        raise Exception(f"결제 금액 불일치 (예상 {PER_PURCHASE_AMOUNT}원, 표시 {payment_val}원)")
+        payment_val = _read_amount(frame)
+        if payment_val == 0:
+            print("  ⚠️ 결제 금액 표시를 읽지 못했습니다. 구매 절차를 계속 진행합니다.")
+        elif payment_val != PER_PURCHASE_AMOUNT:
+            raise Exception(f"결제 금액 불일치 (예상 {PER_PURCHASE_AMOUNT}원, 표시 {payment_val}원)")
 
-    # 구매하기 -> 최종 확인
-    try:
-        _click_first(
-            frame,
-            [
-                "a:has-text('구매하기')",
-                "button:has-text('구매하기')",
-                "button[onclick*='doOrder']",
-                "a[onclick*='doOrder']",
-                ".btn_blue.large.full",
-                ".lotto720_btn_buy",
-                "[name='btnBuy']",
-                "button[name='btnBuy']",
-                "[onclick*='buy']",
-                "[onclick*='Buy']",
-            ],
-            "구매하기 버튼",
-        )
-    except Exception:
-        _dump_interactive_labels(frame, "buy-button-fallback")
-        _click_keyword(frame, ["구매하기", "구매"], "구매하기 버튼")
-    time.sleep(1)
+        # 구매하기 -> 최종 확인
+        try:
+            _click_first(
+                frame,
+                [
+                    "a:has-text('구매하기')",
+                    "button:has-text('구매하기')",
+                    "button[onclick*='doOrder']",
+                    "a[onclick*='doOrder']",
+                    ".btn_blue.large.full",
+                    ".lotto720_btn_buy",
+                    "[name='btnBuy']",
+                    "button[name='btnBuy']",
+                    "[onclick*='buy']",
+                    "[onclick*='Buy']",
+                ],
+                "구매하기 버튼",
+            )
+        except Exception:
+            _dump_interactive_labels(frame, "buy-button-fallback")
+            _click_keyword(frame, ["구매하기", "구매"], "구매하기 버튼")
+        time.sleep(1)
 
-    # 확인 팝업 처리 (모바일에서는 팝업이 없을 수 있음)
-    confirm_candidates = [
-        "#lotto720_popup_confirm a.btn_blue",
-        "#lotto720_popup_confirm a:has-text('확인')",
-        "button:has-text('확인')",
-        "input[value='확인']",
-    ]
-    try:
-        _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
-    except Exception:
-        # 팝업이 없으면 정상 케이스일 수 있어 계속 진행
-        pass
-    time.sleep(3)
+        # 확인 팝업 처리 (모바일에서는 confirm()만 뜨고 팝업이 없을 수 있음)
+        confirm_candidates = [
+            "#lotto720_popup_confirm a.btn_blue",
+            "#lotto720_popup_confirm a:has-text('확인')",
+            "button:has-text('확인')",
+            "input[value='확인']",
+        ]
+        try:
+            _click_first(frame, confirm_candidates, "최종 확인 버튼", timeout=7000)
+        except Exception:
+            pass
 
-    # 구매 후 잔액(가능하면)
-    balance_after = _read_balance(frame)
+        # mobile orderfinish 결과 문구 대기/확인
+        sale_message = ""
+        for _ in range(8):
+            time.sleep(1)
+            sale_message = _read_sale_result(frame)
+            if sale_message:
+                break
 
-    # 상세 성공 판정은 auto_purchase.py에서 구매 전/후 잔액 차감으로 검증
-    # 여기서는 구매 시도 자체만 반환
-    for msg in dialog_messages:
-        normalized = msg.replace(" ", "")
-        if "실패" in normalized or "불가" in normalized:
-            raise Exception(f"구매 실패 dialog 감지: {msg}")
+        # 구매 후 잔액(가능하면)
+        balance_after = _read_balance(frame)
 
-    if _has_failure_signal(frame):
-        _dump_interactive_labels(frame, "verify-failed")
-        raise Exception("구매 실패 신호 감지")
+        normalized_dialogs = [msg.replace(" ", "") for msg in dialog_messages]
+        normalized_sale = sale_message.replace(" ", "")
 
-    return {
-        "games": 5,
-        "total_cost": PER_PURCHASE_AMOUNT,
-        "numbers": "자동 선택",
-        "attempted": True,
-        "balance_before": balance_before,
-        "balance_after": balance_after,
-        "dialogs": dialog_messages,
-    }
+        for msg, norm in zip(dialog_messages, normalized_dialogs):
+            if "실패" in norm or "불가" in norm:
+                raise Exception(f"구매 실패 dialog 감지: {msg}")
+
+        if "구매가능한티켓이없습니다" in normalized_sale:
+            raise Exception(f"구매 실패 결과 감지: {sale_message}")
+
+        if _has_failure_signal(frame):
+            _dump_interactive_labels(frame, "verify-failed")
+            raise Exception("구매 실패 신호 감지")
+
+        success_detected = False
+        if "구매가완료되었습니다" in normalized_sale or "부분적으로완료" in normalized_sale:
+            success_detected = True
+        elif any(("구매완료" in norm or "부분적으로완료" in norm) for norm in normalized_dialogs):
+            success_detected = True
+        elif balance_before >= 0 and balance_after >= 0 and (balance_before - balance_after) >= PER_PURCHASE_AMOUNT:
+            success_detected = True
+
+        if not success_detected:
+            print("  ⚠️ 720 구매 완료 신호를 명확히 확인하지 못했습니다. (상위 잔액 검증으로 최종 판정)")
+
+        return {
+            "games": 5,
+            "total_cost": PER_PURCHASE_AMOUNT,
+            "numbers": "자동 선택",
+            "attempted": True,
+            "balance_before": balance_before,
+            "balance_after": balance_after,
+            "dialogs": dialog_messages,
+            "sale_message": sale_message,
+            "success_signal": success_detected,
+        }
+    finally:
+        try:
+            page.remove_listener("dialog", _on_dialog)
+        except Exception:
+            pass
 
 
 def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
@@ -452,6 +501,24 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
 
     total_games = 0
     total_cost = 0
+    last_attempt = {}
+    success_signals = 0
+
+    # doOrder() confirm() 자동 수락 (모바일 포함)
+    page.add_init_script(
+        """
+        (() => {
+            if (window.__lotto720ConfirmPatched) return;
+            window.__lotto720ConfirmPatched = true;
+            const origConfirm = window.confirm;
+            window.confirm = function(message) {
+                try { window.__lotto720LastConfirm = String(message || ""); } catch (_) {}
+                return true;
+            };
+            window.__lotto720OrigConfirm = origConfirm;
+        })();
+        """
+    )
 
     try:
         print(f"🚀 연금복권720 구매 시작 (목표 금액: ₩{normalized_amount:,}, {purchase_count}회)")
@@ -461,11 +528,24 @@ def purchase_lotto720(page: Page, target_amount: int = None) -> dict:
             result = _purchase_once(page)
             total_games += result.get("games", 0)
             total_cost += result.get("total_cost", 0)
+            if result.get("success_signal"):
+                success_signals += 1
+            last_attempt = result
             time.sleep(1)
 
-        print(f"✅ 연금복권 720+ 구매 완료! (총 {total_cost:,}원)")
+        print(f"✅ 연금복권 720+ 구매 절차 완료 (총 {total_cost:,}원, 내부 성공 신호 {success_signals}/{purchase_count})")
         numbers_text = f"자동 선택 ({purchase_count}회 구매)"
-        return {"games": total_games, "total_cost": total_cost, "numbers": numbers_text, "verified": True}
+        return {
+            "games": total_games,
+            "total_cost": total_cost,
+            "numbers": numbers_text,
+            "verified": True,
+            "success_signals": success_signals,
+            "balance_before": last_attempt.get("balance_before"),
+            "balance_after": last_attempt.get("balance_after"),
+            "dialogs": last_attempt.get("dialogs", []),
+            "sale_message": last_attempt.get("sale_message", ""),
+        }
 
     except Exception as e:
         error_msg = str(e)

@@ -178,10 +178,16 @@ def run_all_tasks(playwright: Playwright) -> None:
                 bb = result_720.get("balance_before")
                 ba = result_720.get("balance_after")
                 dialogs = result_720.get("dialogs") or []
+                sale_message = result_720.get("sale_message") or ""
+                success_signals = result_720.get("success_signals")
                 if bb is not None or ba is not None:
                     print(f"📌 720 내부 잔액 스냅샷: before={bb}, after={ba}")
                 if dialogs:
                     print(f"📌 720 dialog: {dialogs}")
+                if sale_message:
+                    print(f"📌 720 결과 문구: {sale_message}")
+                if success_signals is not None:
+                    print(f"📌 720 내부 성공 신호: {success_signals}")
 
             if result_720 and result_720.get('total_cost', 0) > 0 and verified:
                 print(f"✅ 연금복권 720 구매 완료! (₩{result_720['total_cost']:,})")
