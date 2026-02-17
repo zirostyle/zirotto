@@ -3,10 +3,8 @@ name: Lotto Purchase (Run on GitHub) - Auto
 on:
   workflow_dispatch:
   schedule:
-    # 매일 오전 9:00 KST (UTC 00:00)
-    - cron: '0 0 * * *'
-    # 매일 오후 6:00 KST (UTC 09:00)
-    - cron: '0 9 * * *'
+    # 매주 월요일 오전 7:00 KST (일요일 22:00 UTC)
+    - cron: '0 22 * * 0'
 
 concurrency:
   group: lotto-purchase-${{ github.ref }}
