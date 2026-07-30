@@ -1,333 +1,377 @@
 #!/usr/bin/env python3
-import os
-import re
+"""
+예치금 충전 (간편충전 + OCR 랜덤 키패드 PIN 입력).
+
+[수정 이력]
+- 미사용 import (re, Path, load_dotenv) 제거
+- CHARGE_PIN 을 모듈 전역 캐시가 아니라 호출 시점에 읽음 (주입 가능)
+- 디버그 스크린샷을 DEBUG 플래그로 게이팅하고 debug/ 로 격리
+- 허용 금액 목록을 config.ALLOWED_CHARGE_AMOUNTS 로 이전
+- print → logging, bare except 제거
+"""
+import io
 import sys
 import time
-from pathlib import Path
-from dotenv import load_dotenv
-from playwright.sync_api import Playwright, sync_playwright, Page
+
+from playwright.sync_api import (
+    Page,
+    Playwright,
+    sync_playwright,
+)
+from playwright.sync_api import (
+    TimeoutError as PlaywrightTimeoutError,
+)
+
+from applog import get_logger
+from config import (
+    ALLOWED_CHARGE_AMOUNTS,
+    debug_path,
+    env_bool,
+    env_str,
+    load_settings,
+)
 from login import login
-from telegram_notifier import notify_charge
 
-# .env loading is handled by login module import
+log = get_logger(__name__)
 
-CHARGE_PIN = os.environ.get('CHARGE_PIN')
+CHARGE_URL = "https://www.dhlottery.co.kr/mypage/mndpChrg"
 
-def parse_keypad(page: Page) -> dict:
+KEYPAD_SELECTORS = (".nppfs-keypad", ".kpd-layer", "#keypad", ".keypad")
+
+OCR_CONFIGS = (
+    r"--oem 3 --psm 10 -c tessedit_char_whitelist=0123456789",  # 단일 문자
+    r"--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789",   # 단일 라인
+    r"--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789",   # 단일 단어
+)
+
+
+def _get_charge_pin(charge_pin: str | None = None) -> str:
+    """호출 시점에 PIN 을 읽습니다. 인자 주입이 환경변수보다 우선."""
+    if charge_pin:
+        return charge_pin
+    return env_str("CHARGE_PIN")
+
+
+def _snap(page: Page, name: str, want_debug: bool, include_html: bool = False) -> None:
+    if not want_debug:
+        return
+    try:
+        page.screenshot(path=debug_path(f"charge_{name}.png"))
+        if include_html:
+            with open(debug_path(f"charge_{name}.html"), "w", encoding="utf-8") as fp:
+                fp.write(page.content())
+        log.debug("충전 디버그 산출물 저장: charge_%s", name)
+    except Exception as exc:
+        log.debug("충전 디버그 저장 실패(%s): %s", name, exc)
+
+
+def parse_keypad(page: Page) -> dict[str, object]:
     """
     랜덤 키패드 이미지를 OCR로 분석하여 각 숫자의 위치를 파악합니다.
-    
-    키패드 구조:
-    - 숫자 0-9: 10개
-    - 전체삭제: 1개
-    - 백스페이스: 1개
-    - 총 12개 버튼
-    
-    Args:
-        page: Playwright Page 객체
-        
+
     Returns:
-        dict: {숫자(str): element} 형태의 버튼 매핑 (0-9만 포함)
-        
+        {숫자(str): locator} 매핑 (0-9)
+
     Raises:
-        Exception: 키패드 버튼을 찾지 못했을 경우
+        RuntimeError: 키패드 버튼을 찾지 못했을 경우
     """
     import pytesseract
     from PIL import Image, ImageEnhance, ImageFilter
-    import io
 
-    # 키패드 이미지 대기
-    # Updated from .kpd-layer to .nppfs-keypad based on browser inspection
     keypad_selector = ".nppfs-keypad"
     page.wait_for_selector(keypad_selector, state="visible")
-    
-    # 키패드 버튼들 가져오기
+
     buttons = page.locator("img.kpd-data")
     count = buttons.count()
-    
     if count == 0:
-        raise Exception("No keypad buttons found")
+        raise RuntimeError("키패드 버튼(img.kpd-data)을 찾을 수 없습니다.")
 
-    # 버튼 위치 정보 수집
     button_positions = []
     for i in range(count):
         btn = buttons.nth(i)
         box = btn.bounding_box()
-        # box['width'] > 0 and box['height'] > 0 check to prevent ZeroDivisionError later
-        if box and box['width'] > 0 and box['height'] > 0:
-            button_positions.append({
-                'element': btn,
-                'x': box['x'],
-                'y': box['y'],
-                'w': box['width'],
-                'h': box['height']
-            })
+        if box and box["width"] > 0 and box["height"] > 0:
+            button_positions.append(
+                {
+                    "element": btn,
+                    "x": box["x"],
+                    "y": box["y"],
+                    "w": box["width"],
+                    "h": box["height"],
+                }
+            )
 
-    # 전체 키패드 영역 스크린샷 (캡처 후 메모리에서 처리)
-    time.sleep(1) # Wait for animation/render
-    keypad_layer = page.locator(keypad_selector)
-    keypad_box = keypad_layer.bounding_box()
-    
-    if not keypad_box or keypad_box['width'] == 0 or keypad_box['height'] == 0:
-        raise Exception(f"Keypad container has invalid size: {keypad_box}")
+    if not button_positions:
+        raise RuntimeError("키패드 버튼의 위치 정보를 얻을 수 없습니다.")
+
+    time.sleep(1)  # 렌더링/애니메이션 대기
+    keypad_box = page.locator(keypad_selector).bounding_box()
+    if not keypad_box or keypad_box["width"] == 0 or keypad_box["height"] == 0:
+        raise RuntimeError(f"키패드 컨테이너 크기가 유효하지 않습니다: {keypad_box}")
 
     screenshot_bytes = page.screenshot(clip=keypad_box)
     keypad_img = Image.open(io.BytesIO(screenshot_bytes))
 
-    number_map = {}
-    
-    # 좌표 기준 정렬 (y 우선, x 다음)
-    button_positions.sort(key=lambda b: (b['y'], b['x']))
+    number_map: dict[str, object] = {}
+    button_positions.sort(key=lambda b: (b["y"], b["x"]))
 
-    for idx, btn_info in enumerate(button_positions):
-        # 상대 좌표 계산
-        lx = btn_info['x'] - keypad_box['x']
-        ly = btn_info['y'] - keypad_box['y']
-        
-        crop_box = (lx, ly, lx + btn_info['w'], ly + btn_info['h'])
-        button_img = keypad_img.crop(crop_box)
-        
-        text = None
-        
-        # 전처리 및 OCR 시도 (여러 전략)
-        gray = button_img.convert('L')
-        
-        # 1. 기본 대비 향상
-        enhancer = ImageEnhance.Contrast(gray)
-        enhanced = enhancer.enhance(2.0)
-        binary = enhanced.point(lambda p: p > 128 and 255)
-        
-        configs = [
-            r'--oem 3 --psm 10 -c tessedit_char_whitelist=0123456789', # 단일 문자
-            r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789',  # 단일 라인
-            r'--oem 3 --psm 8 -c tessedit_char_whitelist=0123456789'   # 단일 단어
-        ]
-        
-        for config in configs:
+    for btn_info in button_positions:
+        lx = btn_info["x"] - keypad_box["x"]
+        ly = btn_info["y"] - keypad_box["y"]
+        button_img = keypad_img.crop((lx, ly, lx + btn_info["w"], ly + btn_info["h"]))
+
+        gray = button_img.convert("L")
+        enhanced = ImageEnhance.Contrast(gray).enhance(2.0)
+        binary = enhanced.point(lambda p: 255 if p > 128 else 0)
+
+        recognized = None
+        for config in OCR_CONFIGS:
             result = pytesseract.image_to_string(binary, config=config).strip()
             if result.isdigit() and len(result) == 1:
-                text = result
+                recognized = result
                 break
-        
-        if not text:
-            # 샤프닝 시도
+
+        if not recognized:
             sharp = enhanced.filter(ImageFilter.SHARPEN)
-            binary_sharp = sharp.point(lambda p: p > 128 and 255)
-            for config in configs:
+            binary_sharp = sharp.point(lambda p: 255 if p > 128 else 0)
+            for config in OCR_CONFIGS:
                 result = pytesseract.image_to_string(binary_sharp, config=config).strip()
                 if result.isdigit() and len(result) == 1:
-                    text = result
+                    recognized = result
                     break
 
-        if text and text not in number_map:
-            number_map[text] = btn_info['element']
+        if recognized and recognized not in number_map:
+            number_map[recognized] = btn_info["element"]
 
+    log.info("키패드 숫자 인식: %s개 (%s)", len(number_map), "".join(sorted(number_map)))
     return number_map
 
-def charge_balance(page: Page, amount: int) -> bool:
+
+def charge_deposit(
+    page: Page,
+    amount: int,
+    charge_pin: str | None = None,
+    debug: bool | None = None,
+    dry_run: bool = False,
+) -> bool:
     """
     [간편충전] 기능을 사용하여 예치금을 충전합니다.
-    (Alias for charge_deposit - 통합 스크립트에서 사용)
-    
+
     Args:
         page: 로그인된 Playwright Page 객체
-        amount: 충전할 금액 (5000, 10000, 20000 중 하나)
-        
+        amount: 충전 금액 (config.ALLOWED_CHARGE_AMOUNTS 중 하나)
+        charge_pin: 주입할 PIN (없으면 환경변수)
+        debug: 디버그 산출물 생성 여부
+        dry_run: True 면 PIN 입력 직전까지만 진행하고 중단
+
     Returns:
         bool: 충전 요청 성공 여부
     """
-    return charge_deposit(page, amount)
+    want_debug = env_bool("DEBUG", False) if debug is None else debug
 
-
-def charge_deposit(page: Page, amount: int) -> bool:
-    """
-    [간편충전] 기능을 사용하여 예치금을 충전합니다.
-    
-    Args:
-        page: 로그인된 Playwright Page 객체
-        amount: 충전할 금액 (5000, 10000, 20000 중 하나)
-        
-    Returns:
-        bool: 충전 요청 성공 여부
-    """
-    if not CHARGE_PIN:
-        print("❌ Error: CHARGE_PIN not found in environment variables.")
+    pin = _get_charge_pin(charge_pin)
+    if not pin:
+        log.error("CHARGE_PIN 이 설정되지 않았습니다.")
         return False
 
-    print(f"💳 충전 페이지로 이동 중... (₩{amount:,})")
-    page.goto("https://www.dhlottery.co.kr/mypage/mndpChrg", timeout=30000, wait_until="domcontentloaded")
-    page.wait_for_load_state("networkidle", timeout=20000)
-    time.sleep(3)
-    
-    # 스크린샷 1: 초기 페이지
-    page.screenshot(path="debug_charge_01_initial.png")
-    print("  📸 충전 페이지 초기 화면 저장")
-    
-    # 간편충전 선택
-    print("  간편충전 탭 클릭...")
+    if amount not in ALLOWED_CHARGE_AMOUNTS:
+        log.error(
+            "잘못된 충전 금액 %s. 허용 값: %s",
+            amount,
+            ALLOWED_CHARGE_AMOUNTS,
+        )
+        return False
+
+    log.info("충전 페이지로 이동 중... (%s원)", f"{amount:,}")
+    page.goto(CHARGE_URL, timeout=30000, wait_until="domcontentloaded")
     try:
-        # 여러 셀렉터 시도
-        selectors = ["text=간편충전", "#tab2", ".tab:has-text('간편충전')"]
-        clicked = False
-        for selector in selectors:
-            try:
-                page.click(selector, timeout=3000)
-                clicked = True
-                print(f"  ✅ 간편충전 선택: {selector}")
-                break
-            except:
-                pass
-        
-        if not clicked:
-            print("  ⚠️ 간편충전 탭을 찾을 수 없음, 현재 페이지 그대로 진행...")
-    except Exception as e:
-        print(f"  ⚠️ 간편충전 선택 실패: {e}")
-    
+        page.wait_for_load_state("networkidle", timeout=20000)
+    except PlaywrightTimeoutError:
+        log.debug("충전 페이지 networkidle 타임아웃")
     time.sleep(2)
-    page.screenshot(path="debug_charge_02_after_tab.png")
-    print("  📸 탭 선택 후 화면 저장")
-    
-    # 금액 선택
-    amount_map = {5000: "5,000", 10000: "10,000", 20000: "20,000"}
-    if amount not in amount_map:
-        print(f"❌ Error: Invalid amount {amount}. Choose 5000, 10000, 20000.")
-        return False
-    
-    print(f"  금액 선택: {amount_map[amount]}원")
-    try:
-        page.select_option("select#EcAmt", label=f"{amount_map[amount]}원")
-    except Exception as e:
-        print(f"  ⚠️ 금액 선택 실패: {e}")
-        # 셀렉터 확인을 위해 HTML 저장
-        with open("debug_charge_html.html", "w", encoding="utf-8") as f:
-            f.write(page.content())
-        print("  📄 HTML 저장: debug_charge_html.html")
-    
-    time.sleep(2)
-    page.screenshot(path="debug_charge_03_after_amount.png")
-    print("  📸 금액 선택 후 화면 저장")
-    
-    # 충전하기 버튼 클릭
-    print("  충전하기 버튼 찾기...")
-    try:
-        # 여러 셀렉터 시도
-        charge_selectors = [
-            "button:has-text('충전하기')",
-            ".btn-rec01",
-            "button.btn",
-            "[onclick*='charge']",
-            "[onclick*='Charge']"
-        ]
-        
-        clicked = False
-        for selector in charge_selectors:
-            try:
-                btn = page.locator(selector)
-                if btn.count() > 0:
-                    print(f"  시도: {selector} ({btn.count()}개 발견)")
-                    btn.first.click(timeout=3000)
-                    clicked = True
-                    print(f"  ✅ 충전 버튼 클릭: {selector}")
-                    break
-            except Exception as e:
-                print(f"  ❌ {selector}: {str(e)[:40]}")
-        
-        if not clicked:
-            print("  ❌ 충전 버튼을 찾을 수 없습니다.")
-            return False
-    except Exception as e:
-        print(f"❌ 충전 버튼 클릭 실패: {e}")
-        return False
-    
-    time.sleep(3)
-    page.screenshot(path="debug_charge_04_after_button.png")
-    print("  📸 버튼 클릭 후 화면 저장")
-    
-    # PIN 키패드 대기
-    print("  PIN 키패드 대기 중...")
-    
-    # 여러 셀렉터 시도
-    keypad_selectors = [".nppfs-keypad", ".kpd-layer", "#keypad", ".keypad"]
-    keypad_found = False
-    
-    for selector in keypad_selectors:
+
+    _snap(page, "01_initial", want_debug)
+
+    # 간편충전 탭
+    log.info("간편충전 탭 선택")
+    tab_selectors = ("text=간편충전", "#tab2", ".tab:has-text('간편충전')")
+    tab_clicked = False
+    for selector in tab_selectors:
         try:
-            print(f"  키패드 찾기: {selector}")
+            page.click(selector, timeout=3000)
+            tab_clicked = True
+            log.debug("간편충전 탭 클릭: %s", selector)
+            break
+        except PlaywrightTimeoutError:
+            continue
+        except Exception as exc:
+            log.debug("간편충전 탭 시도 실패 (%s): %s", selector, exc)
+    if not tab_clicked:
+        log.warning("간편충전 탭을 찾지 못했습니다. 현재 페이지로 계속 진행")
+
+    time.sleep(2)
+    _snap(page, "02_after_tab", want_debug)
+
+    # 금액 선택
+    label = f"{amount:,}원"
+    log.info("충전 금액 선택: %s", label)
+    try:
+        page.select_option("select#EcAmt", label=label)
+    except Exception as exc:
+        log.error("충전 금액 선택 실패: %s", exc)
+        _snap(page, "03_amount_failed", want_debug, include_html=True)
+        return False
+
+    time.sleep(1)
+    _snap(page, "03_after_amount", want_debug)
+
+    # 충전하기 버튼
+    log.info("충전하기 버튼 클릭")
+    charge_selectors = (
+        "button:has-text('충전하기')",
+        ".btn-rec01",
+        "[onclick*='charge']",
+        "[onclick*='Charge']",
+        "button.btn",
+    )
+    charge_clicked = False
+    for selector in charge_selectors:
+        try:
+            btn = page.locator(selector)
+            if btn.count() == 0:
+                continue
+            btn.first.click(timeout=3000)
+            charge_clicked = True
+            log.debug("충전 버튼 클릭: %s", selector)
+            break
+        except PlaywrightTimeoutError:
+            continue
+        except Exception as exc:
+            log.debug("충전 버튼 시도 실패 (%s): %s", selector, exc)
+
+    if not charge_clicked:
+        log.error("충전 버튼을 찾을 수 없습니다.")
+        _snap(page, "04_no_button", want_debug, include_html=True)
+        return False
+
+    time.sleep(3)
+    _snap(page, "04_after_button", want_debug)
+
+    # PIN 키패드 대기
+    log.info("PIN 키패드 대기 중...")
+    keypad_found = False
+    for selector in KEYPAD_SELECTORS:
+        try:
             page.wait_for_selector(selector, state="visible", timeout=5000)
             keypad_found = True
-            print(f"  ✅ 키패드 발견: {selector}")
+            log.debug("키패드 발견: %s", selector)
             break
-        except:
-            print(f"  ❌ 없음: {selector}")
-    
+        except PlaywrightTimeoutError:
+            log.debug("키패드 없음: %s", selector)
+
     if not keypad_found:
-        print("❌ 키패드를 찾을 수 없습니다.")
-        page.screenshot(path="debug_charge_05_no_keypad.png")
-        print("  📸 키패드 없음 스크린샷 저장")
-        
-        # HTML 저장
-        with open("debug_charge_05_no_keypad.html", "w", encoding="utf-8") as f:
-            f.write(page.content())
-        print("  📄 HTML 저장")
+        log.error("키패드를 찾을 수 없습니다.")
+        _snap(page, "05_no_keypad", want_debug, include_html=True)
         return False
 
-    print("  키패드 분석 중...")
+    if dry_run:
+        log.warning("DRY_RUN: PIN 입력 직전에 중단합니다. (실제 충전 안 됨)")
+        return False
+
+    # 키패드 OCR
     try:
         number_map = parse_keypad(page)
-    except Exception as e:
-        print(f"❌ 키패드 분석 실패: {e}")
-        page.screenshot(path="debug_charge_keypad_fail.png")
+    except Exception as exc:
+        log.error("키패드 분석 실패: %s", exc)
+        _snap(page, "06_keypad_fail", want_debug)
         return False
-    
-    print(f"  인식된 숫자: {len(number_map)}개")
-    if len(number_map) < len(set(CHARGE_PIN)):
-        print(f"❌ Error: 필요한 숫자를 모두 인식하지 못했습니다 (인식: {len(number_map)}, 필요: {len(set(CHARGE_PIN))}).")
+
+    required_digits = set(pin)
+    missing = required_digits - set(number_map)
+    if missing:
+        log.error(
+            "PIN 에 필요한 숫자를 인식하지 못했습니다. 누락: %s (인식됨: %s)",
+            "".join(sorted(missing)),
+            "".join(sorted(number_map)),
+        )
+        _snap(page, "06_keypad_partial", want_debug)
         return False
-    
-    print(f"  PIN 입력 중... (길이: {len(CHARGE_PIN)})")
-    for i, digit in enumerate(CHARGE_PIN):
-        if digit in number_map:
+
+    log.info("PIN 입력 중... (길이 %s)", len(pin))
+    for digit in pin:
+        try:
             number_map[digit].click()
-            time.sleep(0.3)
-        else:
-            print(f"❌ Error: 숫자 '{digit}'를 키패드에서 찾을 수 없습니다.")
+        except Exception as exc:
+            log.error("PIN 숫자 '%s' 클릭 실패: %s", digit, exc)
             return False
-    
-    print("  충전 완료 대기 중...")
-    page.wait_for_load_state("networkidle", timeout=30000)
+        time.sleep(0.3)
+
+    log.info("충전 처리 대기 중...")
+    try:
+        page.wait_for_load_state("networkidle", timeout=30000)
+    except PlaywrightTimeoutError:
+        log.debug("충전 후 networkidle 타임아웃")
     time.sleep(2)
-    
-    print("✅ 충전 완료!")
+
+    _snap(page, "07_complete", want_debug)
+    log.info("충전 요청 완료")
     return True
 
-def run(playwright: Playwright, amount: int):
+
+def charge_balance(
+    page: Page,
+    amount: int,
+    charge_pin: str | None = None,
+    debug: bool | None = None,
+    dry_run: bool = False,
+) -> bool:
+    """charge_deposit 의 별칭 (통합 스크립트에서 사용)."""
+    return charge_deposit(
+        page, amount, charge_pin=charge_pin, debug=debug, dry_run=dry_run
+    )
+
+
+def run(playwright: Playwright, amount: int) -> None:
+    """독립 실행용."""
+    from telegram_notifier import notify_charge
+
+    settings = load_settings()
+
     browser = playwright.chromium.launch(headless=True)
-    context = browser.new_context()
+    context = browser.new_context(
+        viewport={"width": 1920, "height": 1080},
+        user_agent=(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+    )
     page = context.new_page()
-    
+
     try:
-        login(page)
-        success = charge_deposit(page, amount)
+        login(page, debug=settings.debug)
+        success = charge_deposit(
+            page, amount, debug=settings.debug, dry_run=settings.dry_run
+        )
+        notify_charge(amount, success)
         if success:
-            print("✅ Charge completed successfully!")
-            notify_charge(amount, True)
+            log.info("충전 완료")
         else:
-            print("❌ Charge failed.")
-            notify_charge(amount, False)
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        notify_charge(amount, False)
+            log.error("충전 실패")
+    except Exception as exc:
+        log.exception("충전 중 오류: %s", exc)
+        notify_charge(amount, False, str(exc))
     finally:
         context.close()
         browser.close()
 
+
 if __name__ == "__main__":
-    amount = 10000
+    requested = 10000
     if len(sys.argv) > 1:
         try:
-            amount = int(sys.argv[1].replace(',', ''))
+            requested = int(sys.argv[1].replace(",", ""))
         except ValueError:
-            pass
-            
+            log.warning("금액 파싱 실패, 기본값 %s원 사용", requested)
+
     with sync_playwright() as playwright:
-        run(playwright, amount)
+        run(playwright, requested)

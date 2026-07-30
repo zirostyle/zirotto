@@ -1,0 +1,21 @@
+line-length = 110
+target-version = "py311"
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # comprehensions
+]
+ignore = [
+    "E501",  # line-length 은 formatter 가 관리
+    "B008",  # 기본 인자에서 함수 호출 (dataclass field 패턴과 충돌)
+]
+
+[lint.per-file-ignores]
+# 테스트 스텁에서 Playwright API 이름(TimeoutError)을 의도적으로 재정의
+"tests/conftest.py" = ["A001", "N818"]
