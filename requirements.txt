@@ -1,6 +1,11 @@
-playwright >= 1.37
-pytest-playwright
-pytesseract >= 0.3.10
-Pillow >= 10.0.0
-python-dotenv >= 1.0.0
-requests >= 2.31.0
+# 버전 상한을 지정해 Playwright 메이저 업데이트로 인한
+# 사이트 자동화 동작 변경(브레이킹 체인지)을 방지합니다.
+playwright>=1.44,<2.0
+pytesseract>=0.3.10,<0.4
+Pillow>=10.0.0,<12.0
+python-dotenv>=1.0.0,<2.0
+requests>=2.31.0,<3.0
+pycryptodome>=3.20,<4.0
+
+# 테스트 (pytest-playwright 는 사용하지 않아 제거했습니다)
+pytest>=8.0,<9.0

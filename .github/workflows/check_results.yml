@@ -1,40 +1,81 @@
-name: Check Lotto Results (Sunday 8AM)
+name: Check Lottery Results
 
 on:
   workflow_dispatch:
+    inputs:
+      product:
+        description: '확인할 복권'
+        type: choice
+        options:
+          - all
+          - '645'
+          - '720'
+        default: all
   schedule:
-    # 매주 일요일 오전 8:00 KST (UTC 토요일 23:00)
-    - cron: '0 23 * * 6'
+    # 연금복권 720+: 매주 목요일 19:05 추첨 → 20:00 KST 확인 (11:00 UTC)
+    - cron: '0 11 * * 4'
+    # 로또 6/45: 매주 토요일 20:35 추첨 → 22:00 KST 확인 (13:00 UTC)
+    - cron: '0 13 * * 6'
+
+concurrency:
+  group: lotto-check-results
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   check-results:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 20
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
-        cache: 'pip'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
-    - name: Install Python Dependencies
-      run: |
-        pip install -r requirements.txt
-        playwright install chromium
-        playwright install-deps chromium
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
 
-    - name: Create .env file
-      run: |
-        echo "USER_ID=${{ secrets.USER_ID }}" >> .env
-        echo "PASSWD=${{ secrets.PASSWD }}" >> .env
-        echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
-        echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
+      - name: Select result product
+        id: select-product
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_PRODUCT: ${{ inputs.product }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "product=${MANUAL_PRODUCT:-all}" >> "$GITHUB_OUTPUT"
+          elif [[ "$SCHEDULE" == "0 11 * * 4" ]]; then
+            echo "product=720" >> "$GITHUB_OUTPUT"
+          else
+            echo "product=645" >> "$GITHUB_OUTPUT"
+          fi
 
-    - name: Check Lotto Results
-      env:
-        PYTHONPATH: src
-      run: |
-        python src/check_results.py
+      - name: Check selected lottery results
+        env:
+          USER_ID: ${{ secrets.USER_ID }}
+          PASSWD: ${{ secrets.PASSWD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RESULT_PRODUCT: ${{ steps.select-product.outputs.product }}
+          DEBUG: '0'
+          LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+          PYTHONPATH: src
+          PYTHONUNBUFFERED: '1'
+        run: |
+          overall_status=0
+          if [[ "$RESULT_PRODUCT" == "645" || "$RESULT_PRODUCT" == "all" ]]; then
+            python src/check_results.py || overall_status=1
+          fi
+          if [[ "$RESULT_PRODUCT" == "720" || "$RESULT_PRODUCT" == "all" ]]; then
+            python src/check_lotto720_results.py || overall_status=1
+          fi
+          exit "$overall_status"

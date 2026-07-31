@@ -40,7 +40,15 @@ env/
 .DS_Store
 Thumbs.db
 
-# Playwright
+# Playwright / pytest
 .pytest_cache/
 test-results/
 playwright-report/
+
+# 디버그 산출물
+# 계정 ID, 예치금 잔액, 페이지 전체 HTML 이 포함될 수 있으므로
+# 절대 커밋하지 않습니다. (DEBUG=1 일 때만 생성됨)
+debug/
+debug_*.png
+debug_*.html
+*.har

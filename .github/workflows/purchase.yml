@@ -1,60 +1,92 @@
-name: Lotto Purchase (Run on GitHub) - Auto
+name: Lotto Purchase
 
 on:
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '실제 구매 없이 절차만 검증 (DRY_RUN)'
+        type: boolean
+        default: true
+      debug:
+        description: '디버그 스크린샷/HTML 저장 (DEBUG)'
+        type: boolean
+        default: false
   schedule:
-    # 매주 월요일 오전 7:00 KST (일요일 22:00 UTC)
-    - cron: '0 22 * * 0'
+    # 매주 월요일 오전 10:00 KST (월요일 01:00 UTC)
+    - cron: '0 1 * * 1'
 
 concurrency:
-  group: lotto-purchase-${{ github.ref }}
-  cancel-in-progress: true
+  # 동시 실행을 막아 중복 구매를 방지합니다.
+  group: lotto-purchase
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   purchase:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 25
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.9'
-        cache: 'pip'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
 
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y tesseract-ocr tesseract-ocr-kor
+      - name: Install system dependencies (Tesseract OCR)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-kor
 
-    - name: Install Python Dependencies
-      run: |
-        pip install -r requirements.txt
-        playwright install chromium
-        playwright install-deps chromium
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
 
-    - name: Create .env file
-      run: |
-        echo "USER_ID=${{ secrets.USER_ID }}" >> .env
-        echo "PASSWD=${{ secrets.PASSWD }}" >> .env
-        echo "CHARGE_PIN=${{ secrets.CHARGE_PIN }}" >> .env
-        echo "AUTO_GAMES=${{ secrets.AUTO_GAMES || '0' }}" >> .env
-        echo "MANUAL_NUMBERS=${{ secrets.MANUAL_NUMBERS || '[]' }}" >> .env
-        echo "LOTTO720_AMOUNT=${{ secrets.LOTTO720_AMOUNT || '10000' }}" >> .env
-        echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
-        echo "TELEGRAM_CHAT_ID=${{ secrets.TELEGRAM_CHAT_ID }}" >> .env
-        # Check file capability without exposing content
-        ls -la .env
+      - name: Run purchase workflow
+        # 자격증명을 .env 파일로 기록하지 않고 환경변수로 직접 전달합니다.
+        #
+        # 기존 방식(echo "K=${{ secrets.X }}" >> .env)의 문제:
+        #   1. 값에 개행/따옴표가 있으면 .env 가 깨짐
+        #   2. >> 이므로 기존 .env 에 append 되어 중복 키 발생
+        #   3. 자격증명이 디스크에 남음
+        #   4. 무엇보다, 환경변수로 export 되지 않아 telegram_notifier 가
+        #      토큰을 읽지 못하고 알림이 조용히 실패했습니다.
+        env:
+          USER_ID: ${{ secrets.USER_ID }}
+          PASSWD: ${{ secrets.PASSWD }}
+          CHARGE_PIN: ${{ secrets.CHARGE_PIN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-    - name: Run Lotto Purchase Workflow
-      timeout-minutes: 15
-      env:
-        PYTHONPATH: src
-        VENV_PYTHON: python  # Use system python set up by actions
-        ENABLE_LOTTO645: "1"
-        LOTTO645_ENABLE_FROM: "2026-02-23"  # KST 기준 다음 주 월요일부터 6/45 재개
-      run: |
-        chmod +x scripts/purchase.sh
-        bash scripts/purchase.sh
+          # 예약 실행은 두 복권을 항상 활성화하고, 수동 실행은 Repository variable을 존중
+          ENABLE_LOTTO645: ${{ github.event_name == 'schedule' && '1' || vars.ENABLE_LOTTO645 || '1' }}
+          # 예약 실행에서는 과거 날짜를 사용해 시작일 gate가 구매를 막지 않게 함
+          LOTTO645_ENABLE_FROM: ${{ github.event_name == 'schedule' && '1970-01-01' || vars.LOTTO645_ENABLE_FROM }}
+          STRATEGY_GAMES: ${{ vars.STRATEGY_GAMES || '5' }}
+          STRATEGY_SEED: ${{ vars.STRATEGY_SEED }}
+          AUTO_GAMES: ${{ vars.AUTO_GAMES || '0' }}
+          MANUAL_NUMBERS: ${{ vars.MANUAL_NUMBERS || '[]' }}
+
+          ENABLE_LOTTO720: ${{ github.event_name == 'schedule' && '1' || vars.ENABLE_LOTTO720 || '1' }}
+          LOTTO720_AMOUNT: ${{ vars.LOTTO720_AMOUNT || '5000' }}
+
+          CHARGE_AMOUNT: ${{ vars.CHARGE_AMOUNT || '10000' }}
+          MIN_BALANCE_FLOOR: ${{ vars.MIN_BALANCE_FLOOR || '10000' }}
+
+          # 운영 플래그
+          DRY_RUN: ${{ github.event_name == 'schedule' && '0' || (inputs.dry_run && '1' || '0') }}
+          DEBUG: ${{ inputs.debug && '1' || '0' }}
+          LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
+
+          PYTHONPATH: src
+          PYTHONUNBUFFERED: '1'
+          VENV_PYTHON: python
+        run: |
+          chmod +x scripts/purchase.sh
+          bash scripts/purchase.sh
