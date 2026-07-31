@@ -13,8 +13,11 @@
             자동화의 목적 자체가 깨지는 순서였습니다.
             (README 에는 충전이 먼저라고 문서화되어 있었으나 코드는 반대)
 
-수정 순서:  로그인 → 당첨확인 → 잔액확인 → (부족하면) 충전 → 재확인
+수정 순서:  로그인 → 잔액확인 → (부족하면) 충전 → 재확인
             → 645 구매 → 720 구매 → 결과 요약
+
+당첨 결과 알림은 상품별 추첨 후 전용 GitHub Actions에서 처리합니다.
+구매 실행에서 이전 회차를 다시 알리지 않아 중복 Telegram 알림을 방지합니다.
 ================================================================
 """
 import sys
@@ -27,7 +30,6 @@ from playwright.sync_api import Page, Playwright, sync_playwright
 from applog import get_logger, section
 from balance import get_balance_resilient
 from charge import charge_balance
-from check_results import build_and_notify, get_latest_draw, get_my_lotto_purchases
 from config import (
     LOTTO645_PRICE_PER_GAME,
     PER_720_PURCHASE_AMOUNT,
@@ -111,37 +113,6 @@ def is_lotto645_date_open(settings: Settings, now: datetime | None = None) -> bo
 
 
 # ---------------------------------------------------------------- 단계별 작업
-
-
-def step_notify_previous_draw(page: Page, settings: Settings, summary: RunSummary) -> None:
-    """이전 회차 당첨번호와 내 구매번호를 대조하여 알림을 보냅니다."""
-    section(log, "당첨번호 확인 및 대조")
-
-    try:
-        draw = get_latest_draw()
-    except Exception as exc:
-        log.warning("당첨번호 조회 실패: %s", exc)
-        summary.add("당첨번호 조회 실패 (구매는 계속 진행)")
-        return
-
-    try:
-        purchases = get_my_lotto_purchases(page, debug=settings.debug)
-    except Exception as exc:
-        log.warning("구매내역 조회 실패: %s", exc)
-        purchases = []
-
-    try:
-        results = build_and_notify(draw, purchases, purchase_lookup_failed=not purchases)
-        winners = [r for r in results if r.rank]
-        if winners:
-            detail = ", ".join(f"{r.rank}등" for r in winners)
-            summary.add(f"{draw.round_num}회 당첨: {detail}")
-        elif results:
-            summary.add(f"{draw.round_num}회 미당첨 ({len(results)}게임 대조)")
-        else:
-            summary.add(f"{draw.round_num}회 구매내역 없음")
-    except Exception as exc:
-        log.warning("당첨 결과 알림 실패: %s", exc)
 
 
 def step_ensure_balance(page: Page, settings: Settings, summary: RunSummary) -> int:
@@ -506,16 +477,13 @@ def run_all_tasks(playwright: Playwright) -> bool:
         login(page, user_id=settings.user_id, passwd=settings.passwd, debug=settings.debug)
         time.sleep(2)
 
-        # 1. 이전 회차 당첨 결과 알림
-        step_notify_previous_draw(page, settings, summary)
-
-        # 2. 잔액 확인 및 충전 (구매보다 먼저!)
+        # 1. 잔액 확인 및 충전 (구매보다 먼저!)
         available = step_ensure_balance(page, settings, summary)
 
-        # 3. 로또 6/45 구매
+        # 2. 로또 6/45 구매
         step_purchase_lotto645(page, settings, available, summary)
 
-        # 4. 연금복권 720+ 구매
+        # 3. 연금복권 720+ 구매
         step_purchase_lotto720(page, settings, summary)
 
         section(log, "전체 작업 완료")

@@ -13,6 +13,7 @@
 """
 import datetime
 import re
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -22,7 +23,7 @@ from playwright.sync_api import Playwright, sync_playwright
 from applog import get_logger, section
 from config import debug_path, load_settings
 from login import login
-from telegram_notifier import notify_lotto_result
+from telegram_notifier import notify_error, notify_lotto_result
 
 log = get_logger(__name__)
 
@@ -31,6 +32,7 @@ PURCHASE_HISTORY_URL = "https://www.dhlottery.co.kr/mypage/LottoWinHistList.do"
 
 FIRST_DRAW_DATE = datetime.date(2002, 12, 7)
 API_TIMEOUT = 10
+KST = datetime.timezone(datetime.timedelta(hours=9))
 
 # 최신 회차 탐색 시 위/아래로 살펴볼 최대 범위
 SEARCH_DOWN_LIMIT = 8
@@ -104,7 +106,7 @@ def _fetch_round(round_num: int) -> DrawResult | None:
 
 def estimate_round(today: datetime.date | None = None) -> int:
     """날짜 기준으로 회차를 추정합니다 (탐색 시작점으로만 사용)."""
-    today = today or datetime.date.today()
+    today = today or datetime.datetime.now(KST).date()
     weeks = (today - FIRST_DRAW_DATE).days // 7
     return max(1, weeks + 1)
 
@@ -379,7 +381,7 @@ def build_and_notify(
         else:
             reason = f"{draw.round_num}회 구매 내역이 없습니다."
         log.warning(reason)
-        notify_lotto_result(
+        sent = notify_lotto_result(
             draw.round_num,
             draw.winning_numbers,
             draw.bonus,
@@ -387,6 +389,8 @@ def build_and_notify(
             draw_date=draw.draw_date,
             no_purchase_reason=reason,
         )
+        if not sent:
+            raise RuntimeError("6/45 결과 Telegram 알림 전송에 실패했습니다.")
         return []
 
     results = [
@@ -407,13 +411,15 @@ def build_and_notify(
             rank_text,
         )
 
-    notify_lotto_result(
+    sent = notify_lotto_result(
         draw.round_num,
         draw.winning_numbers,
         draw.bonus,
         tickets=[r.as_dict() for r in results],
         draw_date=draw.draw_date,
     )
+    if not sent:
+        raise RuntimeError("6/45 결과 Telegram 알림 전송에 실패했습니다.")
 
     winners = [r for r in results if r.rank]
     if winners:
@@ -430,16 +436,25 @@ def build_and_notify(
 # ---------------------------------------------------------------- 실행
 
 
-def run(playwright: Playwright) -> None:
+def run(playwright: Playwright) -> bool:
     """당첨 결과 확인 메인 함수."""
     settings = load_settings()
     section(log, "로또 당첨 결과 확인")
 
     try:
         draw = get_latest_draw()
+        today = datetime.datetime.now(KST).date()
+        if today.weekday() == 5 and draw.draw_date:
+            published_date = datetime.date.fromisoformat(draw.draw_date)
+            if published_date != today:
+                raise RuntimeError(
+                    "이번 토요일 6/45 결과가 아직 게시되지 않았습니다. "
+                    f"현재 최신 결과: {draw.round_num}회 ({draw.draw_date})"
+                )
     except Exception as exc:
         log.error("당첨 번호 조회 실패: %s", exc)
-        return
+        notify_error(f"6/45 당첨 결과 조회 실패: {type(exc).__name__}: {exc}")
+        return False
 
     browser = playwright.chromium.launch(headless=True)
     context = browser.new_context(
@@ -452,16 +467,28 @@ def run(playwright: Playwright) -> None:
     page = context.new_page()
 
     try:
-        login(page, debug=settings.debug)
+        login(
+            page,
+            user_id=settings.user_id,
+            passwd=settings.passwd,
+            debug=settings.debug,
+        )
         purchases = get_my_lotto_purchases(page, debug=settings.debug)
         build_and_notify(draw, purchases, purchase_lookup_failed=not purchases)
+        return True
     except Exception as exc:
         log.exception("당첨 확인 중 오류: %s", exc)
+        notify_error(f"6/45 당첨 결과 확인 실패: {type(exc).__name__}: {exc}")
+        return False
     finally:
         context.close()
         browser.close()
 
 
-if __name__ == "__main__":
+def main() -> int:
     with sync_playwright() as playwright:
-        run(playwright)
+        return 0 if run(playwright) else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

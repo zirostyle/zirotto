@@ -6,14 +6,14 @@ on:
       dry_run:
         description: '실제 구매 없이 절차만 검증 (DRY_RUN)'
         type: boolean
-        default: false
+        default: true
       debug:
         description: '디버그 스크린샷/HTML 저장 (DEBUG)'
         type: boolean
         default: false
   schedule:
-    # 매주 월요일 오전 7:00 KST (일요일 22:00 UTC)
-    - cron: '0 22 * * 0'
+    # 매주 월요일 오전 10:00 KST (월요일 01:00 UTC)
+    - cron: '0 1 * * 1'
 
 concurrency:
   # 동시 실행을 막아 중복 구매를 방지합니다.
@@ -64,22 +64,23 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-          # 구매 설정 (Repository variables 로 조정 가능)
-          ENABLE_LOTTO645: ${{ vars.ENABLE_LOTTO645 || '1' }}
-          LOTTO645_ENABLE_FROM: ${{ vars.LOTTO645_ENABLE_FROM }}
+          # 예약 실행은 두 복권을 항상 활성화하고, 수동 실행은 Repository variable을 존중
+          ENABLE_LOTTO645: ${{ github.event_name == 'schedule' && '1' || vars.ENABLE_LOTTO645 || '1' }}
+          # 예약 실행에서는 과거 날짜를 사용해 시작일 gate가 구매를 막지 않게 함
+          LOTTO645_ENABLE_FROM: ${{ github.event_name == 'schedule' && '1970-01-01' || vars.LOTTO645_ENABLE_FROM }}
           STRATEGY_GAMES: ${{ vars.STRATEGY_GAMES || '5' }}
           STRATEGY_SEED: ${{ vars.STRATEGY_SEED }}
           AUTO_GAMES: ${{ vars.AUTO_GAMES || '0' }}
           MANUAL_NUMBERS: ${{ vars.MANUAL_NUMBERS || '[]' }}
 
-          ENABLE_LOTTO720: ${{ vars.ENABLE_LOTTO720 || '1' }}
+          ENABLE_LOTTO720: ${{ github.event_name == 'schedule' && '1' || vars.ENABLE_LOTTO720 || '1' }}
           LOTTO720_AMOUNT: ${{ vars.LOTTO720_AMOUNT || '5000' }}
 
           CHARGE_AMOUNT: ${{ vars.CHARGE_AMOUNT || '10000' }}
           MIN_BALANCE_FLOOR: ${{ vars.MIN_BALANCE_FLOOR || '10000' }}
 
           # 운영 플래그
-          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          DRY_RUN: ${{ github.event_name == 'schedule' && '0' || (inputs.dry_run && '1' || '0') }}
           DEBUG: ${{ inputs.debug && '1' || '0' }}
           LOG_LEVEL: ${{ vars.LOG_LEVEL || 'INFO' }}
 

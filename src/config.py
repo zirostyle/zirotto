@@ -208,7 +208,9 @@ class Settings:
     @property
     def required_balance(self) -> int:
         """이번 회차 구매에 필요한 최소 구매가능 금액."""
-        needed = self.lotto645_cost
+        needed = 0
+        if self.enable_lotto645:
+            needed += self.lotto645_cost
         if self.enable_lotto720:
             needed += self.lotto720_amount
         return max(needed, self.min_balance_floor)

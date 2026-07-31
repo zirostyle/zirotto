@@ -9,7 +9,7 @@
 | 대상 사이트 | dhlottery.co.kr (동행복권) |
 | 구매 상품 | 로또 6/45 (₩1,000/게임), 연금복권 720+ (₩5,000 단위) |
 | 자동화 방식 | Playwright (headless Chromium) 웹 스크래핑/조작 |
-| 실행 환경 | GitHub Actions (`purchase.yml` 월 07:00 KST, `check_results.yml` 일 08:00 KST) |
+| 실행 환경 | GitHub Actions (`purchase.yml` 월 10:00 KST, 결과 확인 목 20:00/토 22:00 KST) |
 | 알림 | Telegram Bot API |
 | 인증 정보 | GitHub Secrets → CI에서 `.env` 파일로 생성 |
 | 특수 기술 | Tesseract OCR로 충전 시 랜덤 보안 키패드 PIN 인식 |
@@ -190,7 +190,7 @@ echo "PASSWD=${{ secrets.PASSWD }}" >> .env
 
 | 항목 | README / SETTINGS_SUMMARY | FINAL_STATUS | 실제 |
 |---|---|---|---|
-| cron | `0 0 * * 1` | 매일 09:00 KST | `0 22 * * 0` (월 07:00 KST) |
+| cron | 과거 문서값 | 과거 문서값 | 구매 `0 1 * * 1`, 결과 `0 11 * * 4` / `0 13 * * 6` |
 | 실행 방식 | 스크립트 개별 실행 | — | 통합 `auto_purchase.py` |
 
 README의 프로젝트 트리에 `auto_purchase.py`, `check_results.py`, `telegram_notifier.py`, `notify_telegram.py`가 빠져 있습니다.

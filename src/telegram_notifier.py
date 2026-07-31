@@ -304,6 +304,7 @@ def notify_lotto_result(
     winning_sorted = sorted(int(n) for n in winning_numbers)
 
     message = f"🎰 <b>로또 {round_num}회 추첨 결과</b>\n"
+    message += "<i>정기 추첨: 매주 토요일 20:35 KST</i>\n"
     if draw_date:
         message += f"<i>추첨일: {_esc(draw_date)}</i>\n"
     message += "\n"
@@ -380,4 +381,50 @@ def notify_lotto_result(
         message += "아쉽게도 당첨되지 않았습니다.\n"
         message += "다음 기회에 도전하세요! 💪"
 
+    return send_telegram_message(message)
+
+
+def notify_lotto720_result(
+    round_num: int,
+    tickets: Sequence[dict],
+    prize_amount: int = 0,
+    purchase_date: str | None = None,
+    draw_date: str | None = None,
+) -> bool:
+    """동행복권 마이페이지의 공식 720+ 당첨 판정을 상세 알림합니다."""
+    message = f"🎟️ <b>연금복권 720+ {int(round_num)}회 추첨 결과</b>\n"
+    message += "<i>정기 추첨: 매주 목요일 19:05 KST</i>\n"
+    if draw_date:
+        message += f"<i>결과 반영일: {_esc(draw_date)}</i>\n"
+    if purchase_date:
+        message += f"<i>구매일: {_esc(purchase_date)}</i>\n"
+
+    message += f"\n<b>📋 내 구매 번호 ({len(tickets)}장)</b>\n"
+    rank_counts: dict[int, int] = {}
+
+    for index, ticket in enumerate(tickets, 1):
+        group = ticket.get("group")
+        number = str(ticket.get("number") or "번호 확인 불가")
+        rank = ticket.get("rank")
+        group_label = f"{int(group)}조" if group is not None else "?조"
+        status = f"{int(rank)}등 당첨" if rank else "미당첨"
+        message += f"\n<code>{index}. {_esc(group_label)} {_esc(number)}</code>\n"
+        if rank:
+            message += f"   🎉 <b>{int(rank)}등 당첨</b>\n"
+            rank_counts[int(rank)] = rank_counts.get(int(rank), 0) + 1
+        else:
+            message += f"   {_esc(status)}\n"
+
+    message += "\n"
+    if rank_counts or prize_amount > 0:
+        message += "<b>🎉 당첨 요약</b>\n"
+        for rank in sorted(rank_counts):
+            message += f"{rank}등: {rank_counts[rank]}장\n"
+        message += f"공식 당첨금 표시: {int(prize_amount):,}원\n"
+        message += "<i>연금식 당첨금의 실제 지급 조건은 동행복권 안내를 확인하세요.</i>"
+    else:
+        message += "아쉽게도 당첨되지 않았습니다.\n"
+        message += "다음 기회에 도전하세요! 💪"
+
+    message += "\n\n<i>판정 출처: 동행복권 마이페이지 구매내역</i>"
     return send_telegram_message(message)
