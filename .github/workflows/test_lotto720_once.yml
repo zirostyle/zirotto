@@ -1,0 +1,53 @@
+name: One-time Lotto 720 Purchase Test
+
+# 이 워크플로우는 아래의 정확한 브랜치/커밋 메시지로 push될 때 한 번만 실행됩니다.
+# 다른 커밋 메시지나 다른 브랜치에서는 job의 if 조건이 false가 되어 실제 구매가 실행되지 않습니다.
+on:
+  push:
+    branches:
+      - fix/p0-bugs-strategy-720-notifications
+  workflow_dispatch:
+
+concurrency:
+  group: lotto720-one-time-purchase-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  purchase-minimum:
+    # push는 정확한 일회성 커밋 메시지만 허용.
+    # 수동 workflow_dispatch는 사용자가 GitHub UI에서 명시적으로 실행한 경우만 허용.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.head_commit.message == 'test: run one-time 720 purchase'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Run guarded minimum purchase test
+        env:
+          USER_ID: ${{ secrets.USER_ID }}
+          PASSWD: ${{ secrets.PASSWD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DEBUG: '1'
+          LOG_LEVEL: INFO
+          PYTHONPATH: src
+          PYTHONUNBUFFERED: '1'
+        run: python scripts/test_lotto720_once.py
