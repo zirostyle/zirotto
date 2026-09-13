@@ -13,10 +13,14 @@ concurrency:
 jobs:
   purchase:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -40,6 +44,7 @@ jobs:
         echo "USER_ID=${{ secrets.USER_ID }}" >> .env
         echo "PASSWD=${{ secrets.PASSWD }}" >> .env
         echo "CHARGE_PIN=${{ secrets.CHARGE_PIN }}" >> .env
+        echo "USE_COSMIC_NUMBERS=${{ secrets.USE_COSMIC_NUMBERS || '1' }}" >> .env
         echo "AUTO_GAMES=${{ secrets.AUTO_GAMES || '0' }}" >> .env
         echo "MANUAL_NUMBERS=${{ secrets.MANUAL_NUMBERS || '[]' }}" >> .env
         echo "LOTTO720_AMOUNT=${{ secrets.LOTTO720_AMOUNT || '10000' }}" >> .env
@@ -54,7 +59,18 @@ jobs:
         PYTHONPATH: src
         VENV_PYTHON: python  # Use system python set up by actions
         ENABLE_LOTTO645: "1"
-        LOTTO645_ENABLE_FROM: "2026-02-23"  # KST 기준 다음 주 월요일부터 6/45 재개
+        USE_COSMIC_NUMBERS: "1"
       run: |
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh
+
+    - name: Commit and Push Purchased Lotto Data
+      if: always()
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        if [ -f "data/purchased_lotto.json" ]; then
+          git add data/purchased_lotto.json
+          git diff-index --quiet HEAD || git commit -m "chore: save purchased lotto numbers [skip ci]"
+          git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
+        fi

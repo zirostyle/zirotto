@@ -17,13 +17,8 @@ from datetime import datetime, timedelta, timezone
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
 from balance import get_balance
-from telegram_notifier import notify_balance, notify_charge, notify_lotto720_purchase
-from check_results import (
-    get_latest_lotto_winning_numbers,
-    get_my_lotto_purchases,
-    check_winning,
-)
-from telegram_notifier import notify_lotto_result
+from telegram_notifier import notify_balance, notify_charge, notify_lotto720_purchase, notify_lotto_result
+from check_results import run_result_check
 
 # Import functions
 from charge import charge_balance
@@ -104,62 +99,15 @@ def _get_balance_resilient(page, attempts: int = 3):
     raise Exception(f"잔액 조회 최종 실패: {last_error}")
 
 
-def _notify_latest_lotto_result(page) -> None:
+def _notify_latest_lotto_result(page=None) -> None:
     """
-    1) 최신 당첨번호 알림
-    2) 내 구매번호와 대조 후 당첨여부 알림
+    1) 최신 당첨번호 확인
+    2) 내 구매번호와 대조 후 당첨 결과 리포트 알림
     """
-    print("\n" + "=" * 50)
-    print("🎯 당첨번호 확인 및 대조 중...")
-    print("=" * 50)
-
     try:
-        winning_info = get_latest_lotto_winning_numbers()
-        print(f"🎰 {winning_info['round']}회 당첨번호: {' '.join([f'{n:02d}' for n in winning_info['winning_numbers']])} + {winning_info['bonus']:02d}")
-        print(f"📅 추첨일: {winning_info['draw_date']}")
+        run_result_check()
     except Exception as e:
-        print(f"❌ 당첨번호 조회 실패: {e}")
-        return
-
-    try:
-        purchases = get_my_lotto_purchases(page)
-    except Exception as e:
-        print(f"⚠️ 구매내역 조회 실패: {e}")
-        purchases = []
-
-    my_purchase = None
-    for p in purchases:
-        if p.get("round") == winning_info["round"]:
-            my_purchase = p
-            break
-
-    if not my_purchase:
-        print(f"⚠️ {winning_info['round']}회 구매내역이 없습니다.")
-        notify_lotto_result(
-            winning_info["round"],
-            winning_info["winning_numbers"],
-            winning_info["bonus"],
-            {},
-        )
-        return
-
-    prizes = {}
-    for numbers in my_purchase.get("numbers", []):
-        rank, _ = check_winning(numbers, winning_info["winning_numbers"], winning_info["bonus"])
-        if rank:
-            prizes[rank] = prizes.get(rank, 0) + 1
-
-    notify_lotto_result(
-        winning_info["round"],
-        winning_info["winning_numbers"],
-        winning_info["bonus"],
-        prizes if prizes else {},
-    )
-
-    if prizes:
-        print(f"✅ 당첨 내역 발견: {prizes}")
-    else:
-        print("ℹ️ 당첨 내역 없음")
+        print(f"⚠️ 당첨 결과 확인/대조 중 오류: {e}")
 
 
 def run_all_tasks(playwright: Playwright) -> None:

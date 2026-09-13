@@ -4,8 +4,15 @@ import re
 import sys
 import time
 from os import environ
-from playwright.sync_api import Playwright, sync_playwright
-from login import login
+try:
+    from playwright.sync_api import Playwright, sync_playwright
+except ImportError:
+    Playwright = None
+    sync_playwright = None
+try:
+    from login import login
+except ImportError:
+    login = None
 from telegram_notifier import notify_lotto645_purchase
 
 # .env loading is handled by login module import
@@ -263,6 +270,91 @@ def _extract_number_sets_dom(page, max_sets: int = 20) -> list:
     return []
 
 
+def save_purchased_lotto(round_num: int, games: list, total_cost: int):
+    """
+    구매한 로또 정보를 data/purchased_lotto.json 파일에 영구 저장합니다.
+    """
+    import os
+    from datetime import datetime, timezone, timedelta
+    
+    kst = timezone(timedelta(hours=9))
+    now_str = datetime.now(kst).strftime('%Y-%m-%d %H:%M:%S')
+    
+    # zirotto/data 디렉토리
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    data_dir = os.path.join(base_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    file_path = os.path.join(data_dir, "purchased_lotto.json")
+    
+    data = {"history": []}
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {"history": []}
+            
+    # 직렬화 가능한 게임 데이터 변환
+    serialized_games = []
+    slot_names = ['A', 'B', 'C', 'D', 'E']
+    for idx, item in enumerate(games):
+        slot_char = slot_names[idx] if idx < len(slot_names) else str(idx + 1)
+        if isinstance(item, dict):
+            serialized_games.append({
+                "slot": item.get("slot", slot_char),
+                "name": item.get("name", f"게임 {slot_char}"),
+                "tag": item.get("tag", f"게임 {slot_char}"),
+                "numbers": sorted(item.get("numbers", []))
+            })
+        elif isinstance(item, (list, tuple)):
+            serialized_games.append({
+                "slot": slot_char,
+                "name": f"게임 {slot_char}",
+                "tag": f"게임 {slot_char}",
+                "numbers": sorted(list(item))
+            })
+
+    entry = {
+        "round": round_num,
+        "purchase_date": now_str,
+        "total_cost": total_cost,
+        "games": serialized_games
+    }
+    
+    # 중복 회차 업데이트
+    existing = [h for h in data.get("history", []) if h.get("round") != round_num]
+    existing.append(entry)
+    data["history"] = existing
+    
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"💾 구매 정보가 저장되었습니다: {file_path} ({round_num}회, {len(serialized_games)}게임)")
+
+
+def get_current_round(page=None) -> int:
+    """현재 회차 번호를 반환합니다."""
+    # 1. 페이지에서 추출 시도
+    if page:
+        try:
+            cur_el = page.locator("#curDrwNo, .cur_round, #drwNo").first
+            if cur_el.count() > 0:
+                txt = cur_el.inner_text(timeout=2000)
+                m = re.search(r'(\d+)', txt)
+                if m:
+                    return int(m.group(1))
+        except Exception:
+            pass
+            
+    # 2. 날짜 기반 회차 계산 (로또 1회: 2002-12-07 20:45)
+    from datetime import datetime, timezone, timedelta
+    kst = timezone(timedelta(hours=9))
+    now = datetime.now(kst)
+    first_draw = datetime(2002, 12, 7, 20, 45, tzinfo=kst)
+    diff_days = (now - first_draw).total_seconds() / 86400
+    estimated_round = int(diff_days // 7) + 1
+    return estimated_round
+
+
 def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:
     """
     로또 6/45를 자동 및 수동으로 구매합니다 (이미 로그인된 페이지 사용).
@@ -277,10 +369,24 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
     """
     from datetime import datetime, timezone, timedelta
     
-    if manual_numbers is None:
+    # 우주의 기운 번호 생성 모드 확인 (기본값: 활성화)
+    use_cosmic = environ.get('USE_COSMIC_NUMBERS', '1').strip().lower() not in {'0', 'false', 'no', 'off'}
+    
+    selected_cosmic_games = []
+    if use_cosmic and (not manual_numbers or len(manual_numbers) == 0):
+        from cosmic_lotto import generate_cosmic_5_games
+        print("\n🔮 우주의 기운 최고 당첨률 5개 번호 조합 생성 중...")
+        selected_cosmic_games = generate_cosmic_5_games()
+        manual_numbers = [g['numbers'] for g in selected_cosmic_games]
+        auto_games = 0  # 우주의 기운 5게임으로 전량 구매
+        print("  ✨ 우주의 기운 5대 특화 전략 조합 생성 완료:")
+        for g in selected_cosmic_games:
+            nums_str = " ".join([f"{n:02d}" for n in g['numbers']])
+            print(f"  [{g['slot']}] {g['tag']}: {nums_str}")
+    elif manual_numbers is None:
         manual_numbers = []
     
-    # Load from env if not provided
+    # Load from env if not provided and not cosmic
     if auto_games == 0 and len(manual_numbers) == 0:
         auto_games = int(environ.get('AUTO_GAMES', '5'))
         manual_numbers = json.loads(environ.get('MANUAL_NUMBERS', '[]'))
@@ -390,17 +496,41 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
             # If popup handling fails, log but continue
             print(f'⚠️  Popup handling: {str(e)}')
 
+        # 대상 회차 확인
+        current_round = get_current_round(page)
+        print(f"🎯 로또 6/45 구매 대상 회차: {current_round}회")
+
         # Manual numbers
         if manual_numbers and len(manual_numbers) > 0:
             print(f"\n수동 번호 선택 중... ({len(manual_numbers)}게임)")
+            
+            # 혼합선택(#num1) 라디오/버튼 클릭
+            try:
+                mix_btn = page.locator("#num1, label[for='num1'], input[value='1']").first
+                if mix_btn.count() > 0:
+                    mix_btn.click(timeout=3000, force=True)
+                    time.sleep(1)
+            except Exception as e:
+                print(f"  ℹ️ 혼합선택 모드 전환: {e}")
+                
+            slot_letters = ['A', 'B', 'C', 'D', 'E']
             for i, game in enumerate(manual_numbers, 1):
-                print(f"  게임 {i}: {game}")
+                slot_char = slot_letters[i - 1] if i - 1 < len(slot_letters) else str(i)
+                game_title = f"게임 [{slot_char}]"
+                if selected_cosmic_games and i - 1 < len(selected_cosmic_games):
+                    game_title += f" {selected_cosmic_games[i - 1].get('tag', '')}"
+                print(f"  {game_title}: {' '.join([f'{n:02d}' for n in sorted(game)])}")
+                
+                # 번호 6개 클릭
                 for number in game:
                     page.click(f'label[for="check645num{number}"]', force=True)
-                    time.sleep(0.1)
-                page.click("#btnSelectNum")
+                    time.sleep(0.05)
+                time.sleep(0.5)
+                
+                # 확인(선택 번호 추가) 버튼 클릭
+                page.click("#btnSelectNum", force=True)
                 time.sleep(1)
-                print(f'  ✅ 게임 {i} 선택 완료')
+                print(f'  ✅ [{slot_char}] 추가 완료')
 
         # Automatic games
         if auto_games > 0:
@@ -694,19 +824,43 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 print(f'\n❌ Lotto 6/45: 구매 실패')
                 success = False
         
-        # 최종 구매 번호 (검증된 번호 우선, 없으면 추출한 번호)
-        final_numbers = _unique_number_sets(verified_numbers if verified_numbers else purchased_numbers)
+        # 최종 구매 번호 결정
+        if selected_cosmic_games:
+            final_numbers = selected_cosmic_games
+        else:
+            final_numbers = _unique_number_sets(verified_numbers if verified_numbers else purchased_numbers)
+        
+        # 구매 성공 시 local JSON DB에 저장 (추첨 결과 매칭에 활용)
+        if success and final_numbers:
+            try:
+                save_purchased_lotto(current_round, final_numbers, total_games * 1000)
+            except Exception as save_err:
+                print(f"⚠️ 구매 내역 파일 저장 실패: {save_err}")
         
         # 구매한 번호 출력
         if final_numbers:
-            print("\n📋 구매한 번호:")
-            for i, nums in enumerate(final_numbers, 1):
-                print(f"  {i}. {' '.join([f'{n:02d}' for n in sorted(nums)])}")
+            print("\n📋 구매한 번호 조합:")
+            slot_letters = ['A', 'B', 'C', 'D', 'E']
+            for i, item in enumerate(final_numbers):
+                slot_char = slot_letters[i] if i < len(slot_letters) else str(i + 1)
+                if isinstance(item, dict):
+                    tag = item.get('tag') or item.get('name') or f"게임 {slot_char}"
+                    nums_str = " ".join([f"{n:02d}" for n in sorted(item.get('numbers', []))])
+                    print(f"  [{slot_char}] {tag}: {nums_str}")
+                else:
+                    print(f"  [{slot_char}] {' '.join([f'{n:02d}' for n in sorted(item)])}")
         else:
             print("\n⚠️ 구매 번호를 확인할 수 없습니다. 마이페이지에서 확인하세요.")
         
-        # 텔레그램 알림
-        notify_lotto645_purchase(auto_games, len(manual_numbers), success, numbers=final_numbers)
+        # 텔레그램 알림 전송
+        notify_lotto645_purchase(
+            auto_games=0 if selected_cosmic_games else auto_games,
+            manual_games=len(selected_cosmic_games) if selected_cosmic_games else len(manual_numbers),
+            success=success,
+            numbers=final_numbers,
+            round_num=current_round,
+            is_cosmic=bool(selected_cosmic_games)
+        )
         return {'games': total_games if success else 0, 'total_cost': total_games * 1000 if success else 0, 'numbers': final_numbers}
 
     except Exception as e:
