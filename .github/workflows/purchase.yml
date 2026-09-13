@@ -64,13 +64,12 @@ jobs:
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh
 
-    - name: Commit and Push Purchased Lotto Data
+    - name: Commit and Push Purchased Lottery Data
       if: always()
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        if [ -f "data/purchased_lotto.json" ]; then
-          git add data/purchased_lotto.json
-          git diff-index --quiet HEAD || git commit -m "chore: save purchased lotto numbers [skip ci]"
-          git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
-        fi
+        git add data/purchased_lotto.json data/purchased_pension720.json 2>/dev/null || true
+        git diff-index --quiet HEAD || git commit -m "chore: save purchased lottery numbers [skip ci]"
+        git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
+

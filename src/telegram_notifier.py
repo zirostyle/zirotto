@@ -141,22 +141,105 @@ def notify_lotto720_purchase(
     success: bool,
     error_msg: str = None,
     numbers: str = None,
-    amount: int = 5000,
-    purchase_count: int = 1
+    tickets: list = None,
+    amount: int = 10000,
+    purchase_count: int = 2,
+    round_num: int = None
 ):
     """연금복권 720+ 구매 알림"""
     if success:
-        message = "🎟️ <b>연금복권 720+ 구매 완료</b>\n\n"
-        message += f"금액: {amount:,}원"
-        if purchase_count > 1:
-            message += f"\n구매 횟수: {purchase_count}회"
-        if numbers:
-            message += f"\n\n<b>구매 번호:</b>\n{numbers}"
+        round_header = f" ({round_num}회)" if round_num else ""
+        ticket_count = len(tickets) if tickets else (purchase_count * 5)
+        message = f"🎟️ <b>연금복권 720+ 구매 완료!{round_header}</b>\n\n"
+        message += f"💰 <b>구매 금액:</b> {amount:,}원 ({ticket_count}매)\n"
+        
+        if tickets and len(tickets) > 0:
+            message += "\n📋 <b>구매 복권 번호:</b>\n"
+            grouped_by_num = {}
+            for t in tickets:
+                if isinstance(t, dict):
+                    grp = t.get('group', '')
+                    num = t.get('number', '')
+                    grouped_by_num.setdefault(num, []).append(grp)
+                elif isinstance(t, str):
+                    message += f"• {t}\n"
+            
+            if grouped_by_num:
+                for idx, (num, grps) in enumerate(grouped_by_num.items(), 1):
+                    num_spaced = " ".join(list(num))
+                    if len(grps) == 5 and set(grps) == {'1조', '2조', '3조', '4조', '5조'}:
+                        message += f"<b>[세트 {idx}] 1조 ~ 5조:</b> <code>{num_spaced}</code> (5매)\n"
+                    else:
+                        grps_str = ", ".join(grps)
+                        message += f"<b>[{grps_str}]</b> <code>{num_spaced}</code>\n"
+            message += "\n🍀 <i>1등(월 700만x20년) + 2등(월 100만x10년x4매) 동시 당첨을 응원합니다! ✨</i>"
+        elif numbers:
+            message += f"\n<b>구매 번호:</b>\n{numbers}"
     else:
         message = "❌ <b>연금복권 720+ 구매 실패</b>\n\n"
         if error_msg:
             message += f"오류: {error_msg}"
     
+    send_telegram_message(message)
+
+
+def notify_lotto720_result(
+    round_num: int,
+    draw_date: str = None,
+    win_group: int = None,
+    win_number: str = None,
+    bonus_number: str = None,
+    ticket_results: list = None,
+    prizes: dict = None,
+    monthly_pension: str = None,
+    total_lump_sum: int = 0
+):
+    """연금복권 720+ 당첨 결과 상세 리포트 알림"""
+    date_str = f" ({draw_date})" if draw_date else ""
+    message = f"🎰 <b>연금복권 720+ {round_num}회 추첨 결과 리포트{date_str}</b>\n\n"
+    
+    # 당첨 번호
+    win_num_spaced = " ".join(list(win_number)) if win_number else ""
+    bonus_num_spaced = " ".join(list(bonus_number)) if bonus_number else ""
+    message += "🎯 <b>당첨 번호:</b>\n"
+    if win_group and win_number:
+        message += f"👉 <b>1등:</b> <b>{win_group}조</b> <code>{win_num_spaced}</code>\n"
+    if bonus_number:
+        message += f"👉 <b>보너스:</b> <b>각조</b> <code>{bonus_num_spaced}</code>\n\n"
+    
+    # 티켓별 상세 매칭 결과
+    if ticket_results and len(ticket_results) > 0:
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
+        message += "🎫 <b>내 복권 매칭 결과:</b>\n"
+        for t in ticket_results:
+            grp = t.get('group', '')
+            num = t.get('number', '')
+            rank = t.get('rank')
+            prize_desc = t.get('prize_desc', '')
+            
+            num_spaced = " ".join(list(num))
+            if rank:
+                message += f"• <b>[{grp}]</b> <code>{num_spaced}</code> 👉 🎉 <b>{rank} 당첨! ({prize_desc})</b>\n"
+            else:
+                message += f"• <b>[{grp}]</b> <code>{num_spaced}</code> ➡️ <i>낙첨</i>\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+    has_win = (prizes and any(prizes.values())) or total_lump_sum > 0 or monthly_pension
+    if has_win:
+        message += "🏆 <b>당첨 요약:</b>\n"
+        if monthly_pension:
+            message += f"🌟 <b>연금 수령:</b> <b>{monthly_pension}</b>\n"
+        if prizes:
+            for rk, cnt in prizes.items():
+                if cnt > 0:
+                    message += f"• <b>{rk}:</b> {cnt}매 당첨\n"
+        if total_lump_sum > 0:
+            message += f"💰 <b>일시금 총 당첨금:</b> <b>{total_lump_sum:,}원</b>\n"
+        message += "\n🎉 <b>진심으로 축하드립니다! 매월 연금의 기적이 일어났습니다! 🥳</b>"
+    else:
+        message += "아쉽게도 이번 회차는 당첨되지 않았습니다.\n"
+        message += "안정적인 1·2등 동시 당첨 세트로 다음 기회에 재도전합니다! 💪"
+        
     send_telegram_message(message)
 
 

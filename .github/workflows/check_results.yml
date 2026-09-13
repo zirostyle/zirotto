@@ -1,9 +1,11 @@
-name: Check Lotto Results (Saturday 9PM KST)
+name: Check Lottery Results (Thursday 7:40PM & Saturday 9:05PM KST)
 
 on:
   workflow_dispatch:
   schedule:
-    # 매주 토요일 오후 9:05 KST (UTC 토요일 12:05) - 추첨 직후 결과 확인
+    # 매주 목요일 오후 7:40 KST (UTC 목요일 10:40) - 연금복권 720+ 추첨 직후 결과 확인
+    - cron: '40 10 * * 4'
+    # 매주 토요일 오후 9:05 KST (UTC 토요일 12:05) - 로또 6/45 추첨 직후 결과 확인
     - cron: '5 12 * * 6'
 
 jobs:

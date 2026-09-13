@@ -146,31 +146,71 @@ def run_all_tasks(playwright: Playwright) -> None:
         MIN_REQUIRED_NEXT = max(lotto720_amount + lotto645_amount, 10000)
         CHARGE_AMOUNT = 20000
 
-        # Step 3: Buy Lotto 645
+        # Step 3: 사전 예치금 잔액 확인 및 부족 시 자동 충전 (구매 전 필수 점검)
+        print("\n" + "=" * 50)
+        print("💰 사전 잔액 점검 및 예치금 충전 확인...")
+        print("=" * 50)
+        try:
+            balance_info = _get_balance_resilient(page)
+            print(f"💰 현재 예치금 잔액: {balance_info['deposit_balance']:,}원")
+            print(f"🛒 현재 구매가능 금액: {balance_info['available_amount']:,}원")
+            print(f"🎯 금주 총 구매 필요 금액: ₩{MIN_REQUIRED_NEXT:,} (연금복권 ₩{lotto720_amount:,} + 로또645 ₩{lotto645_amount:,})")
+
+            if balance_info['available_amount'] < MIN_REQUIRED_NEXT:
+                print(f"💳 잔액 부족 (보유: ₩{balance_info['available_amount']:,} < 필요: ₩{MIN_REQUIRED_NEXT:,}). ₩{CHARGE_AMOUNT:,} 충전 진행...")
+                try:
+                    success = charge_balance(page, CHARGE_AMOUNT)
+                    notify_charge(CHARGE_AMOUNT, bool(success))
+                    if success:
+                        print(f"✅ 충전 완료! ₩{CHARGE_AMOUNT:,}")
+                        time.sleep(2)
+                        balance_info = _get_balance_resilient(page)
+                        print(f"🛒 충전 후 구매가능 금액: ₩{balance_info['available_amount']:,}")
+                    else:
+                        print(f"❌ 예치금 충전 실패")
+                except Exception as e:
+                    print(f"❌ 충전 중 오류 발생: {e}")
+                    notify_charge(CHARGE_AMOUNT, False)
+            else:
+                print(f"✅ 구매 잔액 충분: ₩{balance_info['available_amount']:,}")
+        except Exception as e:
+            print(f"⚠️ 사전 잔액/충전 점검 실패: {e}")
+
+        # Step 4: Buy Lotto 720 (연금복권 720+ 10,000원 = 2세트, 10매)
+        print("\n" + "=" * 50)
+        print(f"🎟️ 연금복권 720+ 구매 중... (목표: ₩{lotto720_amount:,})")
+        print("=" * 50)
+        try:
+            result_720 = purchase_lotto720(page, lotto720_amount)
+            if result_720 and result_720.get('total_cost', 0) > 0:
+                print(f"✅ 연금복권 720+ 구매 완료! (₩{result_720['total_cost']:,})")
+            else:
+                print("⚠️ 연금복권 720+ 구매 결과를 확인할 수 없습니다.")
+        except Exception as e:
+            print(f"❌ 연금복권 720+ 구매 실패: {e}")
+
+        # Step 5: Buy Lotto 645 (로또 6/45 - 우주의 기운 번호)
         lotto645_enabled = _is_enabled("ENABLE_LOTTO645", "1") and _is_lotto645_date_open()
         if lotto645_enabled:
-            print("\n" + "="*50)
-            print("🎫 로또 645 구매 중...")
-            print("="*50)
+            print("\n" + "=" * 50)
+            print("🎫 로또 6/45 구매 중...")
+            print("=" * 50)
             
             try:
                 result_645 = purchase_lotto645(page)
-                
                 if result_645 and result_645.get('games', 0) > 0:
-                    print(f"✅ 로또 645 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
+                    print(f"✅ 로또 6/45 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
                 else:
-                    print("⚠️ 로또 645 구매 실패 - 결과를 확인할 수 없습니다.")
-                    
+                    print("⚠️ 로또 6/45 구매 실패 - 결과를 확인할 수 없습니다.")
             except Exception as e:
                 error_msg = str(e)
                 if "구매 불가" in error_msg or "구매.*시간" in error_msg:
                     print(f"⏭️  {error_msg}")
                     print("   (정상적인 구매 불가 시간대입니다)")
                 elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
-                    print(f"⏭️  로또 645 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
+                    print(f"⏭️  로또 6/45 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
                 else:
-                    print(f"❌ 로또 645 구매 실패: {e}")
-                    # 645 단일 실패로 전체 워크플로우를 중단하지 않음
+                    print(f"❌ 로또 6/45 구매 실패: {e}")
         else:
             raw_from = str(os.environ.get("LOTTO645_ENABLE_FROM", "")).strip()
             if not _is_enabled("ENABLE_LOTTO645", "1"):
@@ -180,99 +220,22 @@ def run_all_tasks(playwright: Playwright) -> None:
             else:
                 print("\n⏭️ 로또 6/45 구매를 건너뜁니다.")
 
-        # Step 4: Buy Lotto 720
-        pre_720_available = None
-        try:
-            pre_720_balance_info = _get_balance_resilient(page)
-            pre_720_available = pre_720_balance_info['available_amount']
-            print(f"📌 720 구매 전 구매가능 금액: ₩{pre_720_available:,}")
-        except Exception:
-            pass
-
-        print("\n" + "="*50)
-        print(f"🎟️ 연금복권 720 구매 중... (목표: ₩{lotto720_amount:,})")
-        print("="*50)
-
-        try:
-            result_720 = purchase_lotto720(page, lotto720_amount)
-            post_720_balance = None
-            try:
-                post_720_info = _get_balance_resilient(page)
-                post_720_balance = post_720_info['available_amount']
-            except Exception:
-                pass
-
-            verified = False
-            spent = None
-            if post_720_balance is not None and pre_720_available is not None:
-                spent = pre_720_available - post_720_balance
-                print(f"📌 720 구매 후 구매가능 금액: ₩{post_720_balance:,} (차감: ₩{spent:,})")
-                if spent >= lotto720_amount:
-                    verified = True
-                    print(f"✅ 연금복권 720 구매 검증 성공 (차감: ₩{spent:,})")
-            else:
-                print("⚠️ 720 구매 전/후 잔액 조회 일부 실패")
-
-            if result_720:
-                bb = result_720.get("balance_before")
-                ba = result_720.get("balance_after")
-                dialogs = result_720.get("dialogs") or []
-                sale_message = result_720.get("sale_message") or ""
-                success_signals = result_720.get("success_signals")
-                if bb is not None or ba is not None:
-                    print(f"📌 720 내부 잔액 스냅샷: before={bb}, after={ba}")
-                if dialogs:
-                    print(f"📌 720 dialog: {dialogs}")
-                if sale_message:
-                    print(f"📌 720 결과 문구: {sale_message}")
-                if success_signals is not None:
-                    print(f"📌 720 내부 성공 신호: {success_signals}")
-
-            if result_720 and result_720.get('total_cost', 0) > 0 and verified:
-                print(f"✅ 연금복권 720 구매 완료! (₩{result_720['total_cost']:,})")
-                notify_lotto720_purchase(
-                    True,
-                    numbers=result_720.get('numbers'),
-                    amount=result_720['total_cost'],
-                    purchase_count=max(1, result_720['total_cost'] // 5000),
-                )
-            else:
-                print("⚠️ 연금복권 720 구매 미검증 - 성공 알림을 보내지 않습니다.")
-                notify_lotto720_purchase(False, "구매내역/잔액 차감 검증 실패")
-        except Exception as e:
-            print(f"❌ 연금복권 720 구매 실패: {e}")
-            notify_lotto720_purchase(False, str(e))
-
-        # Step 5: 잔액 확인 및 부족 시 충전
+        # Step 6: 구매 완료 후 최종 잔액 확인 및 텔레그램 알림
         print("\n" + "=" * 50)
-        print("💰 잔액 확인 및 충전 점검 중...")
+        print("💰 구매 완료 후 최종 잔액 확인 중...")
         print("=" * 50)
         try:
             balance_info = _get_balance_resilient(page)
-            print(f"💰 예치금 잔액: {balance_info['deposit_balance']:,}원")
-            print(f"🛒 구매가능: {balance_info['available_amount']:,}원")
+            print(f"💰 최종 예치금 잔액: {balance_info['deposit_balance']:,}원")
+            print(f"🛒 최종 구매가능: {balance_info['available_amount']:,}원")
             notify_balance(balance_info['deposit_balance'], balance_info['available_amount'])
-
-            if balance_info['available_amount'] < MIN_REQUIRED_NEXT:
-                print(f"💳 잔액 부족 (₩{balance_info['available_amount']:,}). ₩{CHARGE_AMOUNT:,} 충전 중...")
-                try:
-                    success = charge_balance(page, CHARGE_AMOUNT)
-                    notify_charge(CHARGE_AMOUNT, bool(success))
-                    if success:
-                        print(f"✅ 충전 완료! ₩{CHARGE_AMOUNT:,}")
-                    else:
-                        print(f"❌ 충전 실패 (다음 회차 전 확인 필요)")
-                except Exception as e:
-                    print(f"❌ 충전 중 에러 발생: {e}")
-                    notify_charge(CHARGE_AMOUNT, False)
-            else:
-                print(f"✅ 잔액 충분: ₩{balance_info['available_amount']:,}")
         except Exception as e:
-            print(f"⚠️ 잔액/충전 점검 실패: {e}")
+            print(f"⚠️ 최종 잔액 점검 실패: {e}")
         
         print("\n" + "="*50)
         print("✅ 모든 작업 완료!")
         print("="*50)
+
         
     except Exception as e:
         print(f"\n❌ 오류 발생: {e}")
