@@ -12,6 +12,9 @@ jobs:
   check-results:
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: write
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -40,3 +43,18 @@ jobs:
         PYTHONPATH: src
       run: |
         python src/check_results.py
+
+    - name: Build Dashboard Data
+      if: always()
+      run: |
+        python scripts/build_dashboard.py || echo "⚠️ Dashboard data build skipped"
+
+    - name: Commit and Push Results and Dashboard Data
+      if: always()
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/data.json data/purchased_lotto.json data/purchased_pension720.json 2>/dev/null || true
+        git diff-index --quiet HEAD || git commit -m "chore: update lottery results and dashboard data [skip ci]"
+        git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
+

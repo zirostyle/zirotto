@@ -1,0 +1,61 @@
+{
+  "updated_at": "2026-09-13 19:13:13 KST",
+  "summary": {
+    "total_spent": 0,
+    "total_won": 0,
+    "net_profit": 0,
+    "roi_percent": 0.0,
+    "total_lotto_spent": 0,
+    "total_lotto_won": 0,
+    "total_pension_spent": 0,
+    "total_pension_won": 0,
+    "lotto_rank_counts": {
+      "1등": 0,
+      "2등": 0,
+      "3등": 0,
+      "4등": 0,
+      "5등": 0
+    },
+    "pension_rank_counts": {
+      "1등": 0,
+      "2등": 0,
+      "보너스": 0,
+      "3등": 0,
+      "4등": 0,
+      "5등": 0,
+      "6등": 0,
+      "7등": 0
+    }
+  },
+  "latest_winning": {
+    "lotto645": {
+      "round": 1241,
+      "winning_numbers": [
+        7,
+        13,
+        16,
+        23,
+        24,
+        43
+      ],
+      "bonus": 9,
+      "draw_date": "2026-09-12",
+      "first_prize": 1628391980,
+      "source": "naver_search"
+    },
+    "pension720": {
+      "round": 332,
+      "draw_date": "2026-09-10",
+      "win_group": 4,
+      "win_number": "698740",
+      "bonus_number": "833539",
+      "source": "naver_search"
+    }
+  },
+  "lotto645": {
+    "history": []
+  },
+  "pension720": {
+    "history": []
+  }
+}

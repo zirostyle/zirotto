@@ -64,12 +64,18 @@ jobs:
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh
 
+    - name: Build Dashboard Data
+      if: always()
+      run: |
+        python scripts/build_dashboard.py || echo "⚠️ Dashboard data build skipped"
+
     - name: Commit and Push Purchased Lottery Data
       if: always()
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add data/purchased_lotto.json data/purchased_pension720.json 2>/dev/null || true
-        git diff-index --quiet HEAD || git commit -m "chore: save purchased lottery numbers [skip ci]"
+        git add data/purchased_lotto.json data/purchased_pension720.json docs/data.json 2>/dev/null || true
+        git diff-index --quiet HEAD || git commit -m "chore: save purchased lottery numbers and dashboard data [skip ci]"
         git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
+
 

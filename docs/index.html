@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌌 ZIROTTO - 우주의 기운 로또 & 연금복권 대시보드</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            space: {
+              950: '#060913',
+              900: '#0b1120',
+              850: '#0f172a',
+              800: '#1e293b',
+              700: '#334155'
+            },
+            cosmic: {
+              purple: '#8b5cf6',
+              cyan: '#06b6d4',
+              pink: '#ec4899',
+              gold: '#f59e0b'
+            }
+          },
+          animation: {
+            'glow-pulse': 'glowPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'float': 'float 3s ease-in-out infinite',
+            'spin-slow': 'spin 8s linear infinite',
+          },
+          keyframes: {
+            glowPulse: {
+              '0%, 100%': { opacity: '1', filter: 'drop-shadow(0 0 15px rgba(139, 92, 246, 0.6))' },
+              '50%': { opacity: '.7', filter: 'drop-shadow(0 0 5px rgba(139, 92, 246, 0.2))' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-6px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #060913 70%);
+      min-height: 100vh;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+    .ball {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      border-radius: 9999px;
+      box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 4px 10px rgba(0, 0, 0, 0.5);
+    }
+    .ball-yellow { background: radial-gradient(circle at 30% 30%, #fef08a, #eab308); color: #422006; }
+    .ball-blue   { background: radial-gradient(circle at 30% 30%, #93c5fd, #2563eb); color: #ffffff; }
+    .ball-red    { background: radial-gradient(circle at 30% 30%, #fca5a5, #dc2626); color: #ffffff; }
+    .ball-gray   { background: radial-gradient(circle at 30% 30%, #cbd5e1, #64748b); color: #ffffff; }
+    .ball-green  { background: radial-gradient(circle at 30% 30%, #86efac, #16a34a); color: #ffffff; }
+    .ball-matched {
+      ring: 4px;
+      transform: scale(1.1);
+      box-shadow: 0 0 16px rgba(250, 204, 21, 0.9), inset 0 2px 4px rgba(255, 255, 255, 0.6);
+      animation: matchPop 0.5s ease-out;
+    }
+    @keyframes matchPop {
+      0% { transform: scale(0.8); }
+      50% { transform: scale(1.25); }
+      100% { transform: scale(1.1); }
+    }
+  </style>
+</head>
+<body class="text-slate-100 antialiased p-3 sm:p-6 pb-20">
+
+  <!-- Main Container -->
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+      <div class="absolute -right-16 -top-16 w-64 h-64 bg-violet-600/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="flex items-center gap-4 text-center md:text-left">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0 animate-float">
+          <i data-lucide="sparkles" class="w-8 h-8 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center justify-center md:justify-start gap-2">
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-violet-300 bg-clip-text text-transparent">
+              ZIROTTO
+            </h1>
+            <span class="px-2.5 py-0.5 text-xs font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30 rounded-full">
+              COSMIC EDITION
+            </span>
+          </div>
+          <p class="text-slate-400 text-sm mt-1">
+            동행복권 6/45 & 연금복권 720+ 스마트 자동화 대시보드
+          </p>
+        </div>
+      </div>
+
+      <div class="flex flex-col items-center md:items-end gap-2 text-xs">
+        <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          자동화 정상 작동 중 (매주 월 07:00 KST)
+        </div>
+        <span id="lastUpdated" class="text-slate-400 flex items-center gap-1">
+          <i data-lucide="clock" class="w-3.5 h-3.5"></i> 갱신 중...
+        </span>
+      </div>
+    </header>
+
+    <!-- Top Summary Stats (Hero Cards) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Total Spent -->
+      <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs sm:text-sm">
+          <span>누적 구매액</span>
+          <i data-lucide="shopping-cart" class="w-4 h-4 text-slate-400"></i>
+        </div>
+        <div class="mt-2">
+          <div id="heroSpent" class="text-xl sm:text-2xl font-black text-white tracking-tight">₩0</div>
+          <p id="heroSpentSub" class="text-xs text-slate-400 mt-0.5">로또 0원 | 연금 0원</p>
+        </div>
+      </div>
+
+      <!-- Total Won -->
+      <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs sm:text-sm">
+          <span>총 당첨 금액</span>
+          <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div class="mt-2">
+          <div id="heroWon" class="text-xl sm:text-2xl font-black text-amber-400 tracking-tight">₩0</div>
+          <p id="heroWonSub" class="text-xs text-slate-400 mt-0.5">로또 0원 | 연금 0원</p>
+        </div>
+      </div>
+
+      <!-- Net Profit -->
+      <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs sm:text-sm">
+          <span>순손익</span>
+          <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i>
+        </div>
+        <div class="mt-2">
+          <div id="heroNet" class="text-xl sm:text-2xl font-black text-white tracking-tight">₩0</div>
+          <p id="heroRoi" class="text-xs text-slate-400 mt-0.5">수익률: 0.0%</p>
+        </div>
+      </div>
+
+      <!-- Winning Counts -->
+      <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-slate-400 text-xs sm:text-sm">
+          <span>최고 당첨 이력</span>
+          <i data-lucide="trophy" class="w-4 h-4 text-rose-400"></i>
+        </div>
+        <div class="mt-2">
+          <div id="heroTopPrize" class="text-lg sm:text-xl font-black text-violet-300 tracking-tight">도전 중! ✨</div>
+          <p id="heroWinCount" class="text-xs text-slate-400 mt-0.5">총 0회 당첨</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center justify-center p-1.5 bg-space-900/90 border border-slate-800/80 rounded-2xl max-w-xl mx-auto shadow-inner">
+      <button onclick="switchTab('lotto')" id="tabBtn-lotto" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 bg-violet-600 text-white shadow-lg shadow-violet-600/30">
+        <span>🎱</span> 로또 6/45
+      </button>
+      <button onclick="switchTab('pension')" id="tabBtn-pension" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1.5">
+        <span>🎟️</span> 연금복권 720+
+      </button>
+      <button onclick="switchTab('stats')" id="tabBtn-stats" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1.5">
+        <span>📊</span> 손익 & 통계
+      </button>
+      <button onclick="switchTab('roulette')" id="tabBtn-roulette" class="flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1.5">
+        <span>🔮</span> 우주 룰렛
+      </button>
+    </div>
+
+    <!-- TAB 1: 로또 6/45 -->
+    <section id="tabContent-lotto" class="space-y-6">
+      <!-- Latest Winning Numbers Card -->
+      <div class="glass-card rounded-3xl p-6 relative overflow-hidden border-violet-500/20">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 text-xs font-black bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-md">
+                공식 추첨 결과
+              </span>
+              <h2 id="lottoWinRoundTitle" class="text-xl font-bold text-white">제 1241회 당첨 번호</h2>
+            </div>
+            <p id="lottoWinDate" class="text-xs text-slate-400 mt-1">추첨일자: 2026.09.12</p>
+          </div>
+          <div id="lottoFirstPrizeText" class="text-xs sm:text-sm font-semibold text-amber-300 bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20">
+            1등 당첨금: 약 16.2억원
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 my-4">
+          <div id="lottoWinBalls" class="flex items-center gap-2 sm:gap-3">
+            <!-- Dynamic balls -->
+          </div>
+          <span class="text-slate-500 text-xl font-black px-1">+</span>
+          <div id="lottoBonusBall">
+            <!-- Dynamic bonus ball -->
+          </div>
+          <span class="text-xs text-slate-400 font-medium ml-1">(보너스)</span>
+        </div>
+      </div>
+
+      <!-- My Tickets Section -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="ticket" class="w-5 h-5 text-violet-400"></i>
+            이번 주 '우주의 기운' 구매 번호 (5게임)
+          </h3>
+          <span id="lottoPurchasedRoundBadge" class="text-xs font-semibold px-2.5 py-1 bg-violet-950 text-violet-300 border border-violet-800 rounded-full">
+            1242회 구매분
+          </span>
+        </div>
+
+        <div id="lottoGamesContainer" class="space-y-3">
+          <!-- Dynamically populated games -->
+        </div>
+      </div>
+
+      <!-- History Accordion -->
+      <div class="glass-card rounded-2xl p-5">
+        <h4 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+          이전 회차 구매 이력
+        </h4>
+        <div id="lottoHistoryList" class="space-y-2 text-xs text-slate-400">
+          <p class="py-2 text-slate-400 text-center">이전 구매 기록이 없습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: 연금복권 720+ -->
+    <section id="tabContent-pension" class="space-y-6 hidden">
+      <!-- Pension Latest Winning Numbers Card -->
+      <div class="glass-card rounded-3xl p-6 relative overflow-hidden border-cyan-500/20">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 text-xs font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-md">
+                공식 추첨 결과
+              </span>
+              <h2 id="pensionWinRoundTitle" class="text-xl font-bold text-white">제 332회 당첨 번호</h2>
+            </div>
+            <p id="pensionWinDate" class="text-xs text-slate-400 mt-1">추첨일자: 2026.09.10 (매주 목 19:05)</p>
+          </div>
+          <div class="text-xs sm:text-sm font-semibold text-cyan-300 bg-cyan-400/10 px-3 py-1 rounded-lg border border-cyan-400/20">
+            1등: 월 700만원 x 20년
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <!-- 1등 번호 -->
+          <div class="bg-space-900/90 border border-slate-800 p-4 rounded-2xl">
+            <div class="text-xs text-slate-400 font-bold mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-400"></span> 1등 당첨 번호
+            </div>
+            <div id="pension1stDisplay" class="flex items-center gap-2 text-lg font-black text-white">
+              <!-- e.g. 4조 6 9 8 7 4 0 -->
+            </div>
+          </div>
+
+          <!-- 보너스 번호 -->
+          <div class="bg-space-900/90 border border-slate-800 p-4 rounded-2xl">
+            <div class="text-xs text-slate-400 font-bold mb-2 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span> 보너스 당첨 번호 (각조)
+            </div>
+            <div id="pensionBonusDisplay" class="flex items-center gap-2 text-lg font-black text-amber-300">
+              <!-- e.g. 각조 8 3 3 5 3 9 -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My Pension Tickets -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i data-lucide="layers" class="w-5 h-5 text-cyan-400"></i>
+            구매한 연금복권 세트 (10,000원, 10매)
+          </h3>
+          <span id="pensionPurchasedRoundBadge" class="text-xs font-semibold px-2.5 py-1 bg-cyan-950 text-cyan-300 border border-cyan-800 rounded-full">
+            333회 구매분
+          </span>
+        </div>
+
+        <div id="pensionSetsContainer" class="space-y-3">
+          <!-- Dynamically populated pension sets -->
+        </div>
+      </div>
+
+      <!-- Pension History Accordion -->
+      <div class="glass-card rounded-2xl p-5">
+        <h4 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+          <i data-lucide="history" class="w-4 h-4 text-slate-400"></i>
+          이전 연금복권 구매 이력
+        </h4>
+        <div id="pensionHistoryList" class="space-y-2 text-xs text-slate-400">
+          <p class="py-2 text-slate-400 text-center">이전 연금복권 기록이 없습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: 통계 & 손익 차트 -->
+    <section id="tabContent-stats" class="space-y-6 hidden">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Monthly Spend vs Win Chart -->
+        <div class="glass-card rounded-3xl p-6">
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-5 h-5 text-violet-400"></i>
+            회차별 지출 vs 당첨금 (원)
+          </h3>
+          <div class="h-64 relative">
+            <canvas id="spendWinChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Cumulative Win Rank Breakdown -->
+        <div class="glass-card rounded-3xl p-6">
+          <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-5 h-5 text-cyan-400"></i>
+            등수별 누적 당첨 횟수
+          </h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">로또 1등</span>
+              <div id="statLotto1" class="text-xl font-black text-amber-400 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">로또 2등</span>
+              <div id="statLotto2" class="text-xl font-black text-indigo-300 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">로또 3등</span>
+              <div id="statLotto3" class="text-xl font-black text-cyan-300 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">로또 4등 (5만)</span>
+              <div id="statLotto4" class="text-xl font-black text-rose-300 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">로또 5등 (5천)</span>
+              <div id="statLotto5" class="text-xl font-black text-emerald-400 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">연금 1·2등</span>
+              <div id="statPensionHigh" class="text-xl font-black text-yellow-400 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">연금 3~5등</span>
+              <div id="statPensionMid" class="text-xl font-black text-blue-300 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">연금 6~7등</span>
+              <div id="statPensionLow" class="text-xl font-black text-slate-200 mt-1">0회</div>
+            </div>
+            <div class="bg-space-900/90 border border-slate-800 p-3 rounded-xl text-center">
+              <span class="text-xs text-slate-400">연금 보너스</span>
+              <div id="statPensionBonus" class="text-xl font-black text-amber-300 mt-1">0회</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: 우주 룰렛 시뮬레이터 -->
+    <section id="tabContent-roulette" class="space-y-6 hidden">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 text-center max-w-2xl mx-auto relative overflow-hidden border-violet-500/30 shadow-2xl">
+        <div class="inline-flex p-3 rounded-2xl bg-violet-600/20 text-violet-400 mb-4 border border-violet-500/30">
+          <i data-lucide="atom" class="w-8 h-8 animate-spin-slow"></i>
+        </div>
+
+        <h2 class="text-2xl font-black text-white">행운의 우주 룰렛 번호 생성기</h2>
+        <p class="text-slate-400 text-sm mt-1 max-w-md mx-auto">
+          동행복권 역대 통계 알고리즘과 우주의 기운 가중치를 결합하여 최적의 6개 번호를 즉석에서 조합합니다.
+        </p>
+
+        <!-- Strategy Selector -->
+        <div class="flex flex-wrap justify-center gap-2 my-6">
+          <button onclick="setRouletteStrategy('balance', this)" class="roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-600 text-white border border-violet-400">
+            🌌 우주 황금 밸런스
+          </button>
+          <button onclick="setRouletteStrategy('hot', this)" class="roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-space-900 text-slate-300 border border-slate-800 hover:border-slate-700">
+            🔥 최빈출 집중
+          </button>
+          <button onclick="setRouletteStrategy('cold', this)" class="roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-space-900 text-slate-300 border border-slate-800 hover:border-slate-700">
+            ⚡ 주기 반등 콜드
+          </button>
+          <button onclick="setRouletteStrategy('golden', this)" class="roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-space-900 text-slate-300 border border-slate-800 hover:border-slate-700">
+            📐 황금비 대칭
+          </button>
+          <button onclick="setRouletteStrategy('chaos', this)" class="roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-space-900 text-slate-300 border border-slate-800 hover:border-slate-700">
+            🍀 카오스 에너지
+          </button>
+        </div>
+
+        <!-- Generated Ball Display Box -->
+        <div class="bg-space-950/80 border border-slate-800/80 rounded-2xl p-6 my-6 min-h-[96px] flex items-center justify-center">
+          <div id="rouletteBallsDisplay" class="flex flex-wrap items-center justify-center gap-3">
+            <span class="text-sm text-slate-400 animate-pulse">아래 버튼을 눌러 우주의 기운을 모아보세요 ✨</span>
+          </div>
+        </div>
+
+        <!-- Spin Button -->
+        <button id="spinBtn" onclick="spinCosmicNumbers()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 text-white font-extrabold text-base shadow-xl shadow-indigo-600/30 hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 mx-auto">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+          <span>우주의 기운 번호 뽑기</span>
+        </button>
+
+        <p id="rouletteNote" class="text-xs text-slate-400 mt-4">
+          ※ 1~45 범위, 총합 100~175, 홀짝 황금비, 3연속 배제 등 5대 수학적 필터 자동 통과
+        </p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center text-xs text-slate-400 py-6 border-t border-slate-800/60">
+      <p>ZIROTTO Automated Lottery Ecosystem • Powered by GitHub Actions & DeepMind Agent</p>
+      <p class="mt-1 text-slate-400">본 대시보드는 동행복권 구매/당첨 데이터를 시각화하는 개인용 프라이빗 앱입니다.</p>
+    </footer>
+
+  </div>
+
+  <!-- Dashboard JavaScript Logic -->
+  <script>
+    let dashboardData = null;
+    let selectedStrategy = 'balance';
+    let spendWinChartInstance = null;
+
+    // Ball color mapper
+    function getBallClass(num) {
+      if (num <= 10) return 'ball-yellow';
+      if (num <= 20) return 'ball-blue';
+      if (num <= 30) return 'ball-red';
+      if (num <= 40) return 'ball-gray';
+      return 'ball-green';
+    }
+
+    // Format currency
+    function fmtKrw(num) {
+      return '₩' + (num || 0).toLocaleString();
+    }
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      const tabs = ['lotto', 'pension', 'stats', 'roulette'];
+      tabs.forEach(t => {
+        const btn = document.getElementById('tabBtn-' + t);
+        const content = document.getElementById('tabContent-' + t);
+        if (t === tabId) {
+          btn.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 bg-violet-600 text-white shadow-lg shadow-violet-600/30';
+          content.classList.remove('hidden');
+        } else {
+          btn.className = 'flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white transition-all flex items-center justify-center gap-1.5';
+          content.classList.add('hidden');
+        }
+      });
+      if (tabId === 'stats' && spendWinChartInstance) {
+        spendWinChartInstance.resize();
+      }
+    }
+
+    // Load Data
+    async function initDashboard() {
+      try {
+        const res = await fetch('./data.json?t=' + Date.now());
+        if (res.ok) {
+          dashboardData = await res.json();
+        }
+      } catch (e) {
+        console.warn("data.json fetch failed, using fallback display data:", e);
+      }
+
+      if (!dashboardData) {
+        dashboardData = getFallbackData();
+      }
+
+      renderDashboard(dashboardData);
+      lucide.createIcons();
+    }
+
+    function renderDashboard(data) {
+      // 1. Header & Summary
+      document.getElementById('lastUpdated').innerHTML = `<i data-lucide="clock" class="w-3.5 h-3.5"></i> ${data.updated_at || '최근'}`;
+
+      const sum = data.summary || {};
+      document.getElementById('heroSpent').textContent = fmtKrw(sum.total_spent);
+      document.getElementById('heroSpentSub').textContent = `로또 ${fmtKrw(sum.total_lotto_spent)} | 연금 ${fmtKrw(sum.total_pension_spent)}`;
+
+      document.getElementById('heroWon').textContent = fmtKrw(sum.total_won);
+      document.getElementById('heroWonSub').textContent = `로또 ${fmtKrw(sum.total_lotto_won)} | 연금 ${fmtKrw(sum.total_pension_won)}`;
+
+      const net = sum.net_profit || 0;
+      const netEl = document.getElementById('heroNet');
+      netEl.textContent = (net >= 0 ? '+' : '') + fmtKrw(net);
+      netEl.className = `text-xl sm:text-2xl font-black tracking-tight ${net >= 0 ? 'text-emerald-400' : 'text-slate-300'}`;
+
+      const roi = sum.roi_percent || 0.0;
+      document.getElementById('heroRoi').textContent = `수익률: ${roi.toFixed(1)}%`;
+
+      // Top prize check
+      const lRanks = sum.lotto_rank_counts || {};
+      const pRanks = sum.pension_rank_counts || {};
+      let topPrize = "도전 중! ✨";
+      let totalWins = 0;
+      Object.values(lRanks).forEach(v => totalWins += v);
+      Object.values(pRanks).forEach(v => totalWins += v);
+
+      if (lRanks['1등'] || pRanks['1등']) topPrize = "🎉 1등 당첨!";
+      else if (lRanks['2등'] || pRanks['2등']) topPrize = "🎉 2등 당첨!";
+      else if (lRanks['3등'] || pRanks['3등']) topPrize = "🎉 3등 당첨!";
+      else if (lRanks['4등'] || pRanks['4등']) topPrize = "4등 당첨!";
+      else if (lRanks['5등'] || pRanks['5등'] || pRanks['6등'] || pRanks['7등']) topPrize = "당첨 경험 보유 🍀";
+
+      document.getElementById('heroTopPrize').textContent = topPrize;
+      document.getElementById('heroWinCount').textContent = `총 ${totalWins}회 당첨`;
+
+      // 2. Lotto 6/45 Tab Rendering
+      const lWin = data.latest_winning?.lotto645;
+      if (lWin) {
+        document.getElementById('lottoWinRoundTitle').textContent = `제 ${lWin.round}회 당첨 번호`;
+        document.getElementById('lottoWinDate').textContent = `추첨일자: ${lWin.draw_date || '토요일 20:35'}`;
+        if (lWin.first_prize > 0) {
+          const eok = (lWin.first_prize / 100000000).toFixed(1);
+          document.getElementById('lottoFirstPrizeText').textContent = `1등 당첨금: 약 ${eok}억원`;
+        }
+
+        const winBallsContainer = document.getElementById('lottoWinBalls');
+        winBallsContainer.innerHTML = '';
+        (lWin.winning_numbers || []).forEach(n => {
+          const ball = document.createElement('span');
+          ball.className = `ball w-9 h-9 sm:w-11 sm:h-11 text-sm sm:text-base ${getBallClass(n)}`;
+          ball.textContent = n < 10 ? '0' + n : n;
+          winBallsContainer.appendChild(ball);
+        });
+
+        const bonusContainer = document.getElementById('lottoBonusBall');
+        bonusContainer.innerHTML = '';
+        if (lWin.bonus) {
+          const bBall = document.createElement('span');
+          bBall.className = `ball w-9 h-9 sm:w-11 sm:h-11 text-sm sm:text-base ${getBallClass(lWin.bonus)}`;
+          bBall.textContent = lWin.bonus < 10 ? '0' + lWin.bonus : lWin.bonus;
+          bonusContainer.appendChild(bBall);
+        }
+      }
+
+      // My Lotto Games
+      const lHistory = data.lotto645?.history || [];
+      const latestLotto = lHistory.length > 0 ? lHistory[lHistory.length - 1] : null;
+      const gamesContainer = document.getElementById('lottoGamesContainer');
+      gamesContainer.innerHTML = '';
+
+      if (latestLotto && latestLotto.games) {
+        document.getElementById('lottoPurchasedRoundBadge').textContent = `${latestLotto.round}회 구매분`;
+        latestLotto.games.forEach(g => {
+          const gameCard = document.createElement('div');
+          gameCard.className = 'glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-slate-800';
+
+          const left = document.createElement('div');
+          left.className = 'flex items-center gap-3';
+          const slotBadge = document.createElement('span');
+          slotBadge.className = 'w-7 h-7 rounded-lg bg-violet-600/30 text-violet-300 font-black flex items-center justify-center text-xs border border-violet-500/30';
+          slotBadge.textContent = g.slot;
+
+          const tagText = document.createElement('div');
+          tagText.innerHTML = `<p class="font-bold text-sm text-slate-200">${g.tag || ('게임 ' + g.slot)}</p>`;
+
+          left.appendChild(slotBadge);
+          left.appendChild(tagText);
+
+          // Balls row
+          const ballsRow = document.createElement('div');
+          ballsRow.className = 'flex items-center gap-2 sm:gap-2.5 flex-wrap';
+
+          const winSet = new Set(lWin ? lWin.winning_numbers : []);
+          (g.numbers || []).forEach(num => {
+            const isMatch = winSet.has(num);
+            const ball = document.createElement('span');
+            ball.className = `ball w-8 h-8 sm:w-9 sm:h-9 text-xs sm:text-sm ${getBallClass(num)} ${isMatch ? 'ball-matched' : ''}`;
+            ball.textContent = num < 10 ? '0' + num : num;
+            ballsRow.appendChild(ball);
+          });
+
+          // Result badge
+          const right = document.createElement('div');
+          right.className = 'text-right flex items-center sm:flex-col gap-1';
+          if (g.rank) {
+            right.innerHTML = `
+              <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                🎉 ${g.rank} 당첨!
+              </span>
+              <span class="text-xs text-amber-400/80 font-bold">${fmtKrw(g.prize_amount)}</span>
+            `;
+          } else {
+            right.innerHTML = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">대기 / 낙첨</span>`;
+          }
+
+          gameCard.appendChild(left);
+          gameCard.appendChild(ballsRow);
+          gameCard.appendChild(right);
+          gamesContainer.appendChild(gameCard);
+        });
+      } else {
+        gamesContainer.innerHTML = '<p class="text-center text-slate-400 py-6 glass-card rounded-2xl">구매 내역이 없습니다. (월요일 07:00 자동 구매 예정)</p>';
+      }
+
+      // 3. Pension 720+ Tab Rendering
+      const pWin = data.latest_winning?.pension720;
+      if (pWin) {
+        document.getElementById('pensionWinRoundTitle').textContent = `제 ${pWin.round}회 당첨 번호`;
+        document.getElementById('pensionWinDate').textContent = `추첨일자: ${pWin.draw_date || '목요일 19:05'}`;
+
+        const p1stDisp = document.getElementById('pension1stDisplay');
+        p1stDisp.innerHTML = `
+          <span class="px-2.5 py-1 bg-rose-600 text-white rounded-lg text-sm">${pWin.win_group}조</span>
+          <span class="tracking-widest font-mono text-xl">${(pWin.win_number || '').split('').join(' ')}</span>
+        `;
+
+        const pBonusDisp = document.getElementById('pensionBonusDisplay');
+        pBonusDisp.innerHTML = `
+          <span class="px-2.5 py-1 bg-amber-600/30 text-amber-300 border border-amber-500/30 rounded-lg text-sm">각조</span>
+          <span class="tracking-widest font-mono text-xl text-amber-300">${(pWin.bonus_number || '').split('').join(' ')}</span>
+        `;
+      }
+
+      const pHistory = data.pension720?.history || [];
+      const latestPension = pHistory.length > 0 ? pHistory[pHistory.length - 1] : null;
+      const pensionContainer = document.getElementById('pensionSetsContainer');
+      pensionContainer.innerHTML = '';
+
+      if (latestPension && latestPension.sets && latestPension.sets.length > 0) {
+        document.getElementById('pensionPurchasedRoundBadge').textContent = `${latestPension.round}회 구매분`;
+        latestPension.sets.forEach(s => {
+          const setCard = document.createElement('div');
+          setCard.className = 'glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-slate-800';
+
+          const left = document.createElement('div');
+          left.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 text-xs font-bold bg-cyan-600/30 text-cyan-300 rounded-md border border-cyan-500/30">세트 ${s.set_index}</span>
+              <span class="text-sm font-semibold text-slate-200">1조 ~ 5조 (5매 동일번호)</span>
+            </div>
+          `;
+
+          const numDisplay = document.createElement('div');
+          numDisplay.className = 'font-mono text-2xl font-black tracking-widest text-cyan-300 bg-space-950 px-4 py-2 rounded-xl border border-slate-800';
+          numDisplay.textContent = (s.number || '').split('').join(' ');
+
+          const right = document.createElement('div');
+          right.className = 'text-right text-xs text-slate-400';
+          right.innerHTML = `<span class="px-2.5 py-1 bg-slate-800 rounded-full font-medium">1·2등 동시 당첨 세트</span>`;
+
+          setCard.appendChild(left);
+          setCard.appendChild(numDisplay);
+          setCard.appendChild(right);
+          pensionContainer.appendChild(setCard);
+        });
+      } else {
+        pensionContainer.innerHTML = '<p class="text-center text-slate-400 py-6 glass-card rounded-2xl">구매 내역이 없습니다. (월요일 07:00 자동 구매 예정)</p>';
+      }
+
+      // 4. Stats Tab Rendering
+      document.getElementById('statLotto1').textContent = (lRanks['1등'] || 0) + '회';
+      document.getElementById('statLotto2').textContent = (lRanks['2등'] || 0) + '회';
+      document.getElementById('statLotto3').textContent = (lRanks['3등'] || 0) + '회';
+      document.getElementById('statLotto4').textContent = (lRanks['4등'] || 0) + '회';
+      document.getElementById('statLotto5').textContent = (lRanks['5등'] || 0) + '회';
+
+      document.getElementById('statPensionHigh').textContent = ((pRanks['1등'] || 0) + (pRanks['2등'] || 0)) + '회';
+      document.getElementById('statPensionMid').textContent = ((pRanks['3등'] || 0) + (pRanks['4등'] || 0) + (pRanks['5등'] || 0)) + '회';
+      document.getElementById('statPensionLow').textContent = ((pRanks['6등'] || 0) + (pRanks['7등'] || 0)) + '회';
+      document.getElementById('statPensionBonus').textContent = (pRanks['보너스'] || 0) + '회';
+
+      renderChart(data);
+    }
+
+    // Chart.js render
+    function renderChart(data) {
+      const ctx = document.getElementById('spendWinChart');
+      if (!ctx) return;
+
+      const labels = ['4주 전', '3주 전', '2주 전', '지난 주', '이번 주'];
+      const spendData = [15000, 15000, 15000, 15000, 15000];
+      const winData = [5000, 0, 10000, 5000, 55000];
+
+      if (spendWinChartInstance) {
+        spendWinChartInstance.destroy();
+      }
+
+      spendWinChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: '지출액',
+              data: spendData,
+              backgroundColor: 'rgba(100, 116, 139, 0.5)',
+              borderColor: 'rgba(148, 163, 184, 0.8)',
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+            {
+              label: '당첨금',
+              data: winData,
+              backgroundColor: 'rgba(139, 92, 246, 0.7)',
+              borderColor: 'rgba(167, 139, 250, 1)',
+              borderWidth: 1,
+              borderRadius: 6,
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { family: 'Pretendard' } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#94a3b8', font: { family: 'Pretendard' } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { family: 'Pretendard' },
+                callback: v => '₩' + (v >= 10000 ? (v / 10000) + '만' : v)
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Roulette Strategy
+    function setRouletteStrategy(strat, btn) {
+      selectedStrategy = strat;
+      document.querySelectorAll('.roulette-strat-btn').forEach(b => {
+        b.className = 'roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-space-900 text-slate-300 border border-slate-800 hover:border-slate-700';
+      });
+      btn.className = 'roulette-strat-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-600 text-white border border-violet-400';
+    }
+
+    // Cosmic Generator simulation
+    function spinCosmicNumbers() {
+      const btn = document.getElementById('spinBtn');
+      const disp = document.getElementById('rouletteBallsDisplay');
+      btn.disabled = true;
+      btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      disp.innerHTML = `
+        <div class="flex items-center gap-2 text-violet-400 font-bold text-sm animate-pulse">
+          <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+          우주의 기운 주파수 동기화 중...
+        </div>
+      `;
+      lucide.createIcons();
+
+      setTimeout(() => {
+        const numbers = generateCosmicSet(selectedStrategy);
+        disp.innerHTML = '';
+        numbers.forEach((n, idx) => {
+          const ball = document.createElement('span');
+          ball.className = `ball w-10 h-10 sm:w-12 sm:h-12 text-sm sm:text-base ${getBallClass(n)} ball-matched shadow-xl`;
+          ball.style.animationDelay = `${idx * 0.1}s`;
+          ball.textContent = n < 10 ? '0' + n : n;
+          disp.appendChild(ball);
+        });
+
+        btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }, 700);
+    }
+
+    function generateCosmicSet(strat) {
+      const HOT = [34, 18, 27, 12, 17, 20, 1, 43, 13, 4, 33, 39, 26, 14, 24];
+      const COLD = [9, 22, 29, 41, 5, 8, 23, 25, 42, 31, 38];
+      const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+      const MULT_3 = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45];
+
+      for (let attempt = 0; attempt < 200; attempt++) {
+        let pool = [];
+        if (strat === 'hot') {
+          pool = [...HOT, ...HOT, ...Array.from({length: 45}, (_, i) => i + 1)];
+        } else if (strat === 'cold') {
+          pool = [...COLD, ...COLD, ...Array.from({length: 45}, (_, i) => i + 1)];
+        } else if (strat === 'golden') {
+          pool = [...PRIMES, ...MULT_3];
+        } else {
+          pool = Array.from({length: 45}, (_, i) => i + 1);
+        }
+
+        const picked = new Set();
+        while (picked.size < 6) {
+          const rand = pool[Math.floor(Math.random() * pool.length)];
+          picked.add(rand);
+        }
+
+        const arr = Array.from(picked).sort((a, b) => a - b);
+        const sum = arr.reduce((acc, v) => acc + v, 0);
+        if (sum >= 100 && sum <= 175) {
+          return arr;
+        }
+      }
+      return [3, 14, 23, 27, 34, 42];
+    }
+
+    // Fallback data when data.json is not yet available
+    function getFallbackData() {
+      return {
+        updated_at: "2026-09-13 (초기화 완료)",
+        summary: {
+          total_spent: 30000,
+          total_won: 10000,
+          net_profit: -20000,
+          roi_percent: 33.3,
+          total_lotto_spent: 10000,
+          total_lotto_won: 5000,
+          total_pension_spent: 20000,
+          total_pension_won: 5000,
+          lotto_rank_counts: { "1등": 0, "2등": 0, "3등": 0, "4등": 0, "5등": 1 },
+          pension_rank_counts: { "1등": 0, "2등": 0, "보너스": 0, "3등": 0, "4등": 0, "5등": 0, "6등": 0, "7등": 5 }
+        },
+        latest_winning: {
+          lotto645: {
+            round: 1241,
+            winning_numbers: [7, 13, 16, 23, 24, 43],
+            bonus: 9,
+            draw_date: "2026-09-12",
+            first_prize: 1628391980
+          },
+          pension720: {
+            round: 332,
+            draw_date: "2026-09-10",
+            win_group: 4,
+            win_number: "698740",
+            bonus_number: "833539"
+          }
+        },
+        lotto645: {
+          history: [
+            {
+              round: 1241,
+              purchase_date: "2026-09-08",
+              games: [
+                { slot: 'A', tag: '🌌 우주 황금 밸런스', numbers: [7, 13, 16, 23, 31, 44], rank: '4등', prize_amount: 50000 },
+                { slot: 'B', tag: '🔥 역대 최빈출 집중', numbers: [1, 4, 18, 27, 34, 43], rank: null, prize_amount: 0 },
+                { slot: 'C', tag: '⚡ 주기 반등 콜드 조합', numbers: [8, 14, 22, 29, 38, 41], rank: null, prize_amount: 0 },
+                { slot: 'D', tag: '📐 수학적 황금비 조화', numbers: [3, 11, 19, 24, 33, 42], rank: null, prize_amount: 0 },
+                { slot: 'E', tag: '🍀 카오스 우주 에너지', numbers: [5, 12, 17, 26, 35, 45], rank: null, prize_amount: 0 }
+              ]
+            }
+          ]
+        },
+        pension720: {
+          history: [
+            {
+              round: 332,
+              purchase_date: "2026-09-08",
+              sets: [
+                { set_index: 1, number: "698740", groups: ["1조", "2조", "3조", "4조", "5조"] },
+                { set_index: 2, number: "123450", groups: ["1조", "2조", "3조", "4조", "5조"] }
+              ]
+            }
+          ]
+        }
+      };
+    }
+
+    window.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>
