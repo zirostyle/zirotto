@@ -911,7 +911,8 @@
           const ballsRow = document.createElement('div');
           ballsRow.className = 'flex items-center gap-2 sm:gap-2.5 flex-wrap';
 
-          const winSet = new Set(lWin ? lWin.winning_numbers : []);
+          const isDrawPending = latestLotto.round > (lWin ? lWin.round : 0);
+          const winSet = new Set(!isDrawPending && lWin ? lWin.winning_numbers : []);
           (g.numbers || []).forEach(num => {
             const isMatch = winSet.has(num);
             const ball = document.createElement('span');
@@ -930,8 +931,10 @@
               </span>
               <span class="text-xs text-amber-400/80 font-bold">${fmtKrw(g.prize_amount)}</span>
             `;
+          } else if (isDrawPending) {
+            right.innerHTML = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-950/80 text-violet-300 border border-violet-800/80">⏳ 추첨 대기 (토 20:35)</span>`;
           } else {
-            right.innerHTML = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">대기 / 낙첨</span>`;
+            right.innerHTML = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">낙첨</span>`;
           }
 
           gameCard.appendChild(left);

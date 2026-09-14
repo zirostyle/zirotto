@@ -202,17 +202,27 @@ def run_all_tasks(playwright: Playwright) -> None:
         # Step 5: Buy Lotto 645 (로또 6/45 - 우주의 기운 번호)
         lotto645_enabled = _is_enabled("ENABLE_LOTTO645", "1") and _is_lotto645_date_open()
         if lotto645_enabled:
-            print("\n" + "=" * 50)
-            print("🎫 로또 6/45 구매 중...")
-            print("=" * 50)
-            
-            try:
-                result_645 = purchase_lotto645(page)
-                if result_645 and result_645.get('games', 0) > 0:
-                    print(f"✅ 로또 6/45 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
-                else:
-                    print("⚠️ 로또 6/45 구매 실패 - 결과를 확인할 수 없습니다.")
-            except Exception as e:
+            # 금주 회차 중복 구매 방지 검사
+            from lotto645 import get_current_round
+            from check_results import get_purchased_lotto_from_file
+            cur_round = get_current_round(page)
+            existing_record = get_purchased_lotto_from_file(cur_round)
+            if existing_record and len(existing_record.get("games", [])) >= 5:
+                print("\n" + "=" * 50)
+                print(f"⏭️ 로또 6/45 제 {cur_round}회는 이미 {len(existing_record['games'])}게임 구매 완료되어 중복 구매를 건너뜁니다.")
+                print("=" * 50)
+            else:
+                print("\n" + "=" * 50)
+                print("🎫 로또 6/45 구매 중...")
+                print("=" * 50)
+                
+                try:
+                    result_645 = purchase_lotto645(page)
+                    if result_645 and result_645.get('games', 0) > 0:
+                        print(f"✅ 로또 6/45 구매 완료! ({result_645['games']}게임, ₩{result_645['total_cost']:,})")
+                    else:
+                        print("⚠️ 로또 6/45 구매 실패 - 결과를 확인할 수 없습니다.")
+                except Exception as e:
                 error_msg = str(e)
                 if "구매 불가" in error_msg or "구매.*시간" in error_msg:
                     print(f"⏭️  {error_msg}")
