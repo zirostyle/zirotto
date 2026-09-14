@@ -88,12 +88,84 @@
       50% { transform: scale(1.25); }
       100% { transform: scale(1.1); }
     }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
+    }
+    .pin-btn {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
   </style>
 </head>
 <body class="text-slate-100 antialiased p-3 sm:p-6 pb-20">
 
+  <!-- Cosmic PIN Lock Screen Overlay -->
+  <div id="lockScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-space-950/95 backdrop-blur-2xl p-4 transition-opacity duration-300">
+    <!-- Cosmic Background Glow Orbs -->
+    <div class="absolute -top-20 -left-20 w-80 h-80 bg-violet-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-20 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="glass-card rounded-3xl p-6 sm:p-8 w-full max-w-sm flex flex-col items-center text-center relative overflow-hidden shadow-2xl border-violet-500/30">
+      
+      <!-- Icon & Header -->
+      <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 mb-4 animate-float">
+        <i data-lucide="shield-check" class="w-8 h-8 text-white"></i>
+      </div>
+
+      <h2 class="text-xl sm:text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-100 to-violet-300 bg-clip-text text-transparent">
+        ZIROTTO 보안 잠금
+      </h2>
+      <p class="text-slate-400 text-xs sm:text-sm mt-1 mb-6">
+        본인 전용 대시보드입니다.<br>6자리 PIN 번호를 입력하세요.
+      </p>
+
+      <!-- 6 PIN Dots Indicator -->
+      <div id="pinDotsContainer" class="flex items-center justify-center gap-3 sm:gap-4 mb-3">
+        <div id="pinDot0" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+        <div id="pinDot1" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+        <div id="pinDot2" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+        <div id="pinDot3" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+        <div id="pinDot4" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+        <div id="pinDot5" class="w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150"></div>
+      </div>
+
+      <!-- Error / Status Message -->
+      <div id="lockError" class="h-6 text-xs sm:text-sm font-semibold text-rose-400 mb-4 flex items-center justify-center"></div>
+
+      <!-- Keypad -->
+      <div class="grid grid-cols-3 gap-2.5 sm:gap-3 w-full mb-6">
+        <button onclick="handlePinKey('1')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">1</button>
+        <button onclick="handlePinKey('2')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">2</button>
+        <button onclick="handlePinKey('3')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">3</button>
+        <button onclick="handlePinKey('4')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">4</button>
+        <button onclick="handlePinKey('5')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">5</button>
+        <button onclick="handlePinKey('6')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">6</button>
+        <button onclick="handlePinKey('7')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">7</button>
+        <button onclick="handlePinKey('8')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">8</button>
+        <button onclick="handlePinKey('9')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">9</button>
+        <button onclick="handlePinKey('C')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-900/80 hover:bg-slate-800 active:scale-95 text-xs sm:text-sm font-bold text-slate-400 hover:text-slate-200 border border-slate-800 transition-all flex items-center justify-center cursor-pointer select-none">전체취소</button>
+        <button onclick="handlePinKey('0')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-800/70 hover:bg-slate-700/80 active:bg-violet-600/40 active:scale-95 text-xl font-black text-white border border-slate-700/60 transition-all flex items-center justify-center cursor-pointer shadow-md select-none">0</button>
+        <button onclick="handlePinKey('DEL')" class="pin-btn h-14 sm:h-16 rounded-2xl bg-slate-900/80 hover:bg-slate-800 active:scale-95 text-sm font-bold text-slate-400 hover:text-slate-200 border border-slate-800 transition-all flex items-center justify-center cursor-pointer select-none" title="한 글자 지우기">
+          <i data-lucide="delete" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Remember Device Checkbox -->
+      <label class="flex items-center justify-center gap-2 cursor-pointer text-xs text-slate-300 select-none hover:text-white transition-colors py-1">
+        <input type="checkbox" id="rememberMeCheckbox" checked class="w-4 h-4 rounded accent-violet-600 cursor-pointer">
+        <span>이 기기 기억하기 (다음 접속 시 자동 해제)</span>
+      </label>
+
+    </div>
+  </div>
+
   <!-- Main Container -->
-  <div class="max-w-5xl mx-auto space-y-6">
+  <div id="dashboardApp" class="max-w-5xl mx-auto space-y-6 hidden">
 
     <!-- Header -->
     <header class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
@@ -120,9 +192,15 @@
       </div>
 
       <div class="flex flex-col items-center md:items-end gap-2 text-xs">
-        <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full font-medium">
-          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          자동화 정상 작동 중 (매주 월 07:00 KST)
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full font-medium">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            자동화 정상 작동 중 (매주 월 07:00 KST)
+          </div>
+          <button onclick="lockDashboard()" title="대시보드 즉시 잠그기" class="flex items-center gap-1.5 bg-slate-800/90 hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/40 px-3 py-1.5 rounded-full transition-all cursor-pointer font-medium">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            <span>잠금</span>
+          </button>
         </div>
         <span id="lastUpdated" class="text-slate-400 flex items-center gap-1">
           <i data-lucide="clock" class="w-3.5 h-3.5"></i> 갱신 중...
@@ -451,8 +529,217 @@
   <!-- Dashboard JavaScript Logic -->
   <script>
     let dashboardData = null;
+    let lockedRawData = null;
     let selectedStrategy = 'balance';
     let spendWinChartInstance = null;
+    let currentPin = '';
+    let isDecrypting = false;
+
+    // Convert Base64 string to Uint8Array
+    function b64ToBuf(b64) {
+      const bin = atob(b64);
+      const len = bin.length;
+      const buf = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        buf[i] = bin.charCodeAt(i);
+      }
+      return buf;
+    }
+
+    // Native Web Crypto Decryption (PBKDF2 50,000 + HMAC-SHA256 CTR & Tag Verification)
+    async function decryptPayload(lockedData, pin) {
+      const enc = new TextEncoder();
+      const salt = b64ToBuf(lockedData.salt);
+      const nonce = b64ToBuf(lockedData.nonce);
+      const expectedTag = b64ToBuf(lockedData.tag);
+      const ct = b64ToBuf(lockedData.ct);
+
+      const keyMaterial = await crypto.subtle.importKey(
+        'raw',
+        enc.encode(pin),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveKey']
+      );
+
+      const hmacKey = await crypto.subtle.deriveKey(
+        {
+          name: 'PBKDF2',
+          salt: salt,
+          iterations: 50000,
+          hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: 'HMAC', hash: 'SHA-256', length: 256 },
+        false,
+        ['sign']
+      );
+
+      // 1. Verify Authentication Tag
+      const tagData = new Uint8Array(nonce.length + ct.length);
+      tagData.set(nonce, 0);
+      tagData.set(ct, nonce.length);
+      const calculatedTagBuf = await crypto.subtle.sign('HMAC', hmacKey, tagData);
+      const calculatedTag = new Uint8Array(calculatedTagBuf);
+
+      if (calculatedTag.length !== expectedTag.length) {
+        throw new Error('PIN verification failed');
+      }
+      let diff = 0;
+      for (let i = 0; i < calculatedTag.length; i++) {
+        diff |= calculatedTag[i] ^ expectedTag[i];
+      }
+      if (diff !== 0) {
+        throw new Error('PIN verification failed');
+      }
+
+      // 2. Decrypt Counter Keystream
+      const keystream = new Uint8Array(Math.ceil(ct.length / 32) * 32);
+      let counter = 0;
+      let offset = 0;
+      while (offset < ct.length) {
+        const blockInput = new Uint8Array(16 + 4);
+        blockInput.set(nonce, 0);
+        const view = new DataView(blockInput.buffer);
+        view.setUint32(16, counter, false);
+        const block = new Uint8Array(await crypto.subtle.sign('HMAC', hmacKey, blockInput));
+        keystream.set(block, offset);
+        offset += 32;
+        counter++;
+      }
+
+      const pt = new Uint8Array(ct.length);
+      for (let i = 0; i < ct.length; i++) {
+        pt[i] = ct[i] ^ keystream[i];
+      }
+
+      const dec = new TextDecoder();
+      return JSON.parse(dec.decode(pt));
+    }
+
+    // Keypad and PIN Input Logic
+    function handlePinKey(val) {
+      if (isDecrypting) return;
+      const errorEl = document.getElementById('lockError');
+      if (errorEl) errorEl.textContent = '';
+
+      if (val === 'C') {
+        currentPin = '';
+      } else if (val === 'DEL') {
+        currentPin = currentPin.slice(0, -1);
+      } else if (currentPin.length < 6) {
+        currentPin += val;
+      }
+
+      updatePinDots();
+
+      if (currentPin.length === 6) {
+        submitPin();
+      }
+    }
+
+    function updatePinDots() {
+      for (let i = 0; i < 6; i++) {
+        const dot = document.getElementById('pinDot' + i);
+        if (!dot) continue;
+        if (i < currentPin.length) {
+          dot.className = 'w-4 h-4 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 border-2 border-violet-400 shadow-lg shadow-violet-500/60 scale-110 transition-all duration-150';
+        } else {
+          dot.className = 'w-4 h-4 rounded-full border-2 border-slate-600 bg-transparent transition-all duration-150';
+        }
+      }
+    }
+
+    async function submitPin() {
+      if (currentPin.length !== 6 || isDecrypting) return;
+      isDecrypting = true;
+      const dotsContainer = document.getElementById('pinDotsContainer');
+      const errorEl = document.getElementById('lockError');
+      const rememberMe = document.getElementById('rememberMeCheckbox') ? document.getElementById('rememberMeCheckbox').checked : true;
+
+      try {
+        if (!lockedRawData) {
+          throw new Error('데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        }
+        const decrypted = await decryptPayload(lockedRawData, currentPin);
+
+        if (rememberMe) {
+          localStorage.setItem('zirotto_pin', currentPin);
+        } else {
+          localStorage.removeItem('zirotto_pin');
+        }
+
+        dashboardData = decrypted;
+        renderDashboard(dashboardData);
+        hideLockScreen();
+      } catch (err) {
+        console.warn('Unlock failed:', err);
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
+        dotsContainer.classList.add('animate-shake');
+        errorEl.textContent = 'PIN 번호가 일치하지 않습니다.';
+        setTimeout(() => {
+          dotsContainer.classList.remove('animate-shake');
+          currentPin = '';
+          updatePinDots();
+          isDecrypting = false;
+        }, 400);
+        return;
+      }
+      isDecrypting = false;
+    }
+
+    function hideLockScreen() {
+      const lockScreen = document.getElementById('lockScreen');
+      const app = document.getElementById('dashboardApp');
+      if (lockScreen) {
+        lockScreen.classList.add('opacity-0');
+        setTimeout(() => {
+          lockScreen.classList.add('hidden');
+        }, 300);
+      }
+      if (app) {
+        app.classList.remove('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function showLockScreen() {
+      const lockScreen = document.getElementById('lockScreen');
+      const app = document.getElementById('dashboardApp');
+      if (app) {
+        app.classList.add('hidden');
+      }
+      if (lockScreen) {
+        lockScreen.classList.remove('hidden');
+        setTimeout(() => {
+          lockScreen.classList.remove('opacity-0');
+        }, 10);
+      }
+      currentPin = '';
+      updatePinDots();
+      lucide.createIcons();
+    }
+
+    function lockDashboard() {
+      localStorage.removeItem('zirotto_pin');
+      showLockScreen();
+    }
+
+    // Keyboard support for desktop
+    window.addEventListener('keydown', (e) => {
+      const lockScreen = document.getElementById('lockScreen');
+      if (lockScreen && !lockScreen.classList.contains('hidden')) {
+        if (e.key >= '0' && e.key <= '9') {
+          handlePinKey(e.key);
+        } else if (e.key === 'Backspace') {
+          handlePinKey('DEL');
+        } else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') {
+          handlePinKey('C');
+        }
+      }
+    });
 
     // Ball color mapper
     function getBallClass(num) {
@@ -492,7 +779,31 @@
       try {
         const res = await fetch('./data.json?t=' + Date.now());
         if (res.ok) {
-          dashboardData = await res.json();
+          const json = await res.json();
+          if (json.locked) {
+            lockedRawData = json;
+            const savedPin = localStorage.getItem('zirotto_pin');
+            if (savedPin && savedPin.length === 6) {
+              try {
+                dashboardData = await decryptPayload(lockedRawData, savedPin);
+                hideLockScreen();
+                renderDashboard(dashboardData);
+                lucide.createIcons();
+                return;
+              } catch (e) {
+                console.warn('Saved PIN invalid:', e);
+                localStorage.removeItem('zirotto_pin');
+              }
+            }
+            showLockScreen();
+            return;
+          } else {
+            dashboardData = json;
+            hideLockScreen();
+            renderDashboard(dashboardData);
+            lucide.createIcons();
+            return;
+          }
         }
       } catch (e) {
         console.warn("data.json fetch failed, using fallback display data:", e);
@@ -502,6 +813,7 @@
         dashboardData = getFallbackData();
       }
 
+      hideLockScreen();
       renderDashboard(dashboardData);
       lucide.createIcons();
     }
