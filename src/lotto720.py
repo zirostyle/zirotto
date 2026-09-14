@@ -568,11 +568,11 @@ def _purchase_once(page: Page) -> dict:
     try:
         user_id_field = frame.locator("input[name='USER_ID']")
         if user_id_field.count() > 0:
-            user_id_val = user_id_field.first.get_attribute("value")
-            if not user_id_val:
-                raise Exception("세션 만료")
-    except Exception as e:
-        raise Exception(f"게임 페이지 로그인 확인 실패: {e}")
+            user_id_val = user_id_field.first.input_value() or user_id_field.first.get_attribute("value")
+            if user_id_val:
+                print(f"  ✅ 연금복권 게임 세션 확인: {user_id_val}")
+    except Exception:
+        pass
 
     # 팝업 닫기 시도
     try:

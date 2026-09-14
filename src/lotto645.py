@@ -504,6 +504,12 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
         if manual_numbers and len(manual_numbers) > 0:
             print(f"\n수동 번호 선택 중... ({len(manual_numbers)}게임)")
             
+            # 번호 선택 요소 로드 대기
+            try:
+                page.wait_for_selector("#btnSelectNum, #check645num1, label[for='check645num1']", timeout=15000)
+            except Exception:
+                pass
+
             # 혼합선택(#num1) 라디오/버튼 클릭
             try:
                 mix_btn = page.locator("#num1, label[for='num1'], input[value='1']").first
@@ -523,12 +529,18 @@ def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) ->
                 
                 # 번호 6개 클릭
                 for number in game:
-                    page.click(f'label[for="check645num{number}"]', force=True)
+                    try:
+                        page.click(f'label[for="check645num{number}"]', force=True, timeout=5000)
+                    except Exception:
+                        page.locator(f'#check645num{number}').check(force=True, timeout=3000)
                     time.sleep(0.05)
                 time.sleep(0.5)
                 
                 # 확인(선택 번호 추가) 버튼 클릭
-                page.click("#btnSelectNum", force=True)
+                try:
+                    page.click("#btnSelectNum", force=True, timeout=5000)
+                except Exception:
+                    page.locator("#btnSelectNum").first.click(force=True, timeout=5000)
                 time.sleep(1)
                 print(f'  ✅ [{slot_char}] 추가 완료')
 
