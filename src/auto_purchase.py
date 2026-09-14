@@ -223,14 +223,14 @@ def run_all_tasks(playwright: Playwright) -> None:
                     else:
                         print("⚠️ 로또 6/45 구매 실패 - 결과를 확인할 수 없습니다.")
                 except Exception as e:
-                error_msg = str(e)
-                if "구매 불가" in error_msg or "구매.*시간" in error_msg:
-                    print(f"⏭️  {error_msg}")
-                    print("   (정상적인 구매 불가 시간대입니다)")
-                elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
-                    print(f"⏭️  로또 6/45 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
-                else:
-                    print(f"❌ 로또 6/45 구매 실패: {e}")
+                    error_msg = str(e)
+                    if "구매 불가" in error_msg or "구매.*시간" in error_msg:
+                        print(f"⏭️  {error_msg}")
+                        print("   (정상적인 구매 불가 시간대입니다)")
+                    elif "ERR_CONNECTION_TIMED_OUT" in error_msg or "Timeout" in error_msg:
+                        print(f"⏭️  로또 6/45 접속 지연/타임아웃으로 이번 회차는 건너뜁니다: {e}")
+                    else:
+                        print(f"❌ 로또 6/45 구매 실패: {e}")
         else:
             raw_from = str(os.environ.get("LOTTO645_ENABLE_FROM", "")).strip()
             if not _is_enabled("ENABLE_LOTTO645", "1"):
