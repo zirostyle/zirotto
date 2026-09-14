@@ -61,16 +61,34 @@ def login(page: Page, max_retries: int = 3) -> None:
             
             print('Starting login process...')
             
-            # Navigate to login page with longer timeout
-            try:
-                page.goto("https://www.dhlottery.co.kr/login", timeout=60000, wait_until="domcontentloaded")
-            except PlaywrightTimeoutError:
-                print("⚠️ 로그인 페이지 로드 타임아웃, 재시도 중...")
-                time.sleep(3)
-                page.goto("https://www.dhlottery.co.kr/login", timeout=60000, wait_until="load")
+            # Auto accept any alerts (e.g., password change notice)
+            page.on("dialog", lambda dialog: dialog.accept())
+
+            # Navigate to login page with multiple fallbacks and fast selector wait
+            login_urls = [
+                "https://www.dhlottery.co.kr/login",
+                "https://www.dhlottery.co.kr/user.do?method=login",
+                "https://dhlottery.co.kr/user.do?method=login"
+            ]
+            loaded = False
+            for target_url in login_urls:
+                try:
+                    print(f"🔗 로그인 페이지 접속 시도: {target_url}")
+                    page.goto(target_url, timeout=30000, wait_until="commit")
+                    page.wait_for_selector("#inpUserId", state="visible", timeout=20000)
+                    loaded = True
+                    break
+                except Exception as nav_err:
+                    print(f"⚠️ {target_url} 접속 지연 ({nav_err}), 다음 주소 시도...")
+                    time.sleep(2)
+            
+            if not loaded:
+                print("⚠️ 직접 URL 접속 재시도 (domcontentloaded)...")
+                page.goto("https://www.dhlottery.co.kr/login", timeout=45000, wait_until="domcontentloaded")
+                page.wait_for_selector("#inpUserId", state="visible", timeout=20000)
             
             # Wait for page to settle
-            time.sleep(2)
+            time.sleep(1)
             
             # Fill login form
             page.locator("#inpUserId").fill(USER_ID)

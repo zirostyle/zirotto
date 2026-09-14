@@ -60,6 +60,14 @@ jobs:
         VENV_PYTHON: python  # Use system python set up by actions
         ENABLE_LOTTO645: "1"
         USE_COSMIC_NUMBERS: "1"
+        USER_ID: ${{ secrets.USER_ID }}
+        PASSWD: ${{ secrets.PASSWD }}
+        CHARGE_PIN: ${{ secrets.CHARGE_PIN }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        AUTO_GAMES: ${{ secrets.AUTO_GAMES || '0' }}
+        MANUAL_NUMBERS: ${{ secrets.MANUAL_NUMBERS || '[]' }}
+        LOTTO720_AMOUNT: ${{ secrets.LOTTO720_AMOUNT || '10000' }}
       run: |
         chmod +x scripts/purchase.sh
         bash scripts/purchase.sh

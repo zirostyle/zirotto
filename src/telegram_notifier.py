@@ -7,8 +7,40 @@ except ImportError:
 import urllib.request
 import urllib.parse
 
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
-TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
+from pathlib import Path
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
+def _ensure_env():
+    if load_dotenv:
+        project_root = Path(__file__).resolve().parent.parent
+        env_path = project_root / '.env'
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+        cwd_env = Path.cwd() / '.env'
+        if cwd_env.exists():
+            load_dotenv(dotenv_path=cwd_env)
+        load_dotenv()
+
+_ensure_env()
+
+
+def get_bot_token():
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        _ensure_env()
+        token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    return token
+
+
+def get_chat_id():
+    chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    if not chat_id:
+        _ensure_env()
+        chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+    return chat_id
 
 
 def send_telegram_message(message: str, parse_mode: str = 'HTML') -> bool:
@@ -22,9 +54,12 @@ def send_telegram_message(message: str, parse_mode: str = 'HTML') -> bool:
     Returns:
         bool: 전송 성공 여부
     """
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+    bot_token = get_bot_token()
+    chat_id = get_chat_id()
+
+    if not bot_token or not chat_id:
         print("\n" + "─" * 40)
-        print("📱 [Telegram Message Preview]")
+        print("📱 [Telegram Message Preview (Token/Chat ID not set)]")
         print("─" * 40)
         # HTML 태그 제거하여 터미널에 깔끔히 출력
         clean_text = re.sub(r'<[^>]+>', '', message)
@@ -33,20 +68,28 @@ def send_telegram_message(message: str, parse_mode: str = 'HTML') -> bool:
         return False
     
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = {
-            'chat_id': TELEGRAM_CHAT_ID,
+            'chat_id': chat_id,
             'text': message,
             'parse_mode': parse_mode
         }
         if requests:
-            response = requests.post(url, data=data, timeout=10)
-            return response.status_code == 200
+            response = requests.post(url, data=data, timeout=15)
+            if response.status_code == 200:
+                print("📨 텔레그램 메시지 전송 성공!")
+                return True
+            else:
+                print(f"⚠️ Telegram API Error ({response.status_code}): {response.text}")
+                return False
         else:
             encoded = urllib.parse.urlencode(data).encode('utf-8')
             req = urllib.request.Request(url, data=encoded)
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                return resp.status == 200
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    print("📨 텔레그램 메시지 전송 성공!")
+                    return True
+                return False
     except Exception as e:
         print(f"⚠️ Telegram notification failed: {e}")
         return False

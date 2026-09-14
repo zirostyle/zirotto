@@ -13,7 +13,17 @@ Features:
 """
 import os
 import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
+try:
+    from dotenv import load_dotenv
+    project_root = Path(__file__).resolve().parent.parent
+    if (project_root / '.env').exists():
+        load_dotenv(dotenv_path=project_root / '.env')
+    load_dotenv()
+except ImportError:
+    pass
+
 from playwright.sync_api import Playwright, sync_playwright
 from login import login
 from balance import get_balance

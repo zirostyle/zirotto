@@ -515,67 +515,45 @@ def _navigate_to_lotto720(page: Page):
     last_url = ""
     mobile_detected = False
     for idx, url in enumerate(desktop_urls, 1):
-        page.goto(url, timeout=60000, wait_until="domcontentloaded")
-        page.wait_for_load_state("networkidle", timeout=30000)
-        time.sleep(2)
-
-        last_url = page.url
-        print(f"  현재 URL (시도 {idx}): {last_url}")
-        if "m.dhlottery.co.kr" in last_url:
-            mobile_detected = True
-            print("  ℹ️ 모바일 페이지로 이동됨 - 모바일 화면으로 계속 진행")
-            break
-        else:
-            frame = _get_frame(page)
-            frame.locator("body").first.wait_for(state="attached", timeout=15000)
-            return frame
-
-    if mobile_detected:
-        page.locator("body").first.wait_for(state="attached", timeout=15000)
-
-        # 모바일 메인에서 720 바로구매 버튼 클릭 시도
         try:
-            mobile_direct_selectors = [
-                "#pt720ImdtPrchs",
-                "#btnMoPtgmPrchs",
-                ".btnBuyPt720",
-                "a:has-text('연금복권720+')",
-                "button:has-text('연금복권720+')",
-            ]
-            for selector in mobile_direct_selectors:
-                try:
-                    el = page.locator(selector)
-                    if el.count() > 0:
-                        el.first.click(timeout=3000, force=True)
-                        page.wait_for_load_state("domcontentloaded", timeout=20000)
-                        time.sleep(2)
-                        if "game_mobile/pension720" in page.url:
-                            print(f"  ✅ 모바일 720 구매 페이지 진입: {page.url}")
-                            return page
-                except Exception:
-                    continue
-        except Exception:
-            pass
+            print(f"  연금복권 접속 시도 {idx}: {url}")
+            page.goto(url, timeout=30000, wait_until="commit")
+            time.sleep(3)
 
-        # 직접 URL 진입 fallback
-        mobile_urls = [
-            "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
-            "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
-        ]
-        for murl in mobile_urls:
-            try:
-                page.goto(murl, timeout=60000, wait_until="domcontentloaded")
-                page.wait_for_load_state("networkidle", timeout=20000)
-                time.sleep(2)
-                if "pension720" in page.url:
-                    print(f"  ✅ 모바일 720 URL 직접 진입 성공: {page.url}")
-                    return page
-            except Exception:
-                continue
+            last_url = page.url
+            print(f"  현재 URL (시도 {idx}): {last_url}")
+            if "m.dhlottery.co.kr" in last_url:
+                mobile_detected = True
+                print("  ℹ️ 모바일 페이지로 이동됨 - 모바일 화면으로 계속 진행")
+                break
+            else:
+                frame = _get_frame(page)
+                frame.locator("body").first.wait_for(state="attached", timeout=15000)
+                return frame
+        except Exception as d_err:
+            print(f"  ⚠️ 데스크톱 720 URL ({url}) 접속 특이사항: {d_err}")
+            continue
 
-        return page
+    # 데스크톱 진입 실패 또는 모바일 감지 시 모바일 인터페이스 시도
+    print("  📱 모바일 연금복권 인터페이스 진입 시도...")
+    mobile_urls = [
+        "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+    ]
+    for murl in mobile_urls:
+        try:
+            print(f"  모바일 URL 시도: {murl}")
+            page.goto(murl, timeout=30000, wait_until="commit")
+            time.sleep(3)
+            if "pension720" in page.url or "game" in page.url:
+                print(f"  ✅ 모바일 720 구매 페이지 진입 성공: {page.url}")
+                page.locator("body").first.wait_for(state="attached", timeout=15000)
+                return page
+        except Exception as m_err:
+            print(f"  ⚠️ 모바일 URL ({murl}) 시도 중 오류: {m_err}")
+            continue
 
-    raise Exception(f"연금복권 페이지 진입 실패 ({last_url})")
+    raise Exception(f"연금복권 페이지 진입 실패 (마지막 URL: {last_url})")
 
 
 def _purchase_once(page: Page) -> dict:
