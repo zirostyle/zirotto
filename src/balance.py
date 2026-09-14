@@ -32,16 +32,15 @@ def find_element_with_retry(page: Page, selectors: list, element_name: str, max_
         for selector in selectors:
             try:
                 print(f"🔍 시도 중: {selector}")
-                element = page.locator(selector)
-                element.wait_for(state="attached", timeout=10000)
+                element = page.locator(selector).first
+                element.wait_for(state="attached", timeout=5000)
                 
-                if element.count() > 0:
-                    text = element.first.inner_text(timeout=5000).strip()
-                    if text:
-                        print(f"✅ 찾음: {selector} = '{text}'")
-                        return text
-                    else:
-                        print(f"⚠️ 요소는 있으나 텍스트 없음: {selector}")
+                text = element.inner_text(timeout=3000).strip()
+                if text:
+                    print(f"✅ 찾음: {selector} = '{text}'")
+                    return text
+                else:
+                    print(f"⚠️ 요소는 있으나 텍스트 없음: {selector}")
             except PlaywrightTimeoutError:
                 print(f"⏱️ 타임아웃: {selector}")
             except Exception as e:
@@ -93,8 +92,7 @@ def get_balance(page: Page) -> dict:
         "span#totalAmt",
         ".total_amt",
         "//span[@id='totalAmt']",
-        "//div[contains(@class, 'deposit')]//span",
-        "text=/\\d{1,3}(,\\d{3})*원?/"
+        "//div[contains(@class, 'deposit')]//span"
     ]
     
     # Try multiple selectors for available amount
