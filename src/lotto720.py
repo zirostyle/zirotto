@@ -840,17 +840,25 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
 
         for i in range(purchase_count):
             print(f"  [{i + 1}/{purchase_count}] 구매 진행 중...")
-            result = _purchase_once(page)
-            total_games += result.get("games", 0)
-            total_cost += result.get("total_cost", 0)
-            if result.get("success_signal"):
-                success_signals += 1
-            if result.get("tickets"):
-                all_tickets.extend(result["tickets"])
-            if not round_num and result.get("round"):
-                round_num = result["round"]
-            last_attempt = result
-            time.sleep(2)
+            try:
+                result = _purchase_once(page)
+                total_games += result.get("games", 0)
+                total_cost += result.get("total_cost", 0)
+                if result.get("success_signal"):
+                    success_signals += 1
+                if result.get("tickets"):
+                    all_tickets.extend(result["tickets"])
+                if not round_num and result.get("round"):
+                    round_num = result["round"]
+                last_attempt = result
+                time.sleep(2)
+            except Exception as loop_err:
+                print(f"  ⚠️ [{i + 1}/{purchase_count}] 구매 중 오류: {loop_err}")
+                if total_cost > 0:
+                    print(f"  ℹ️ 이미 {total_cost:,}원({len(all_tickets)}매) 구매 성공하였으므로 기구매 내역을 안전하게 보존합니다.")
+                    break
+                else:
+                    raise
 
         if not round_num:
             round_num = get_current_pension720_round(page=page)
