@@ -268,6 +268,9 @@ def build_dashboard_data():
         except Exception:
             pass
     if not pin:
+        if os.path.exists(output_path):
+            print("⚠️ DASHBOARD_PIN 환경변수가 설정되지 않아 기존 암호화된 data.json을 유지합니다.")
+            return {}
         raise ValueError("DASHBOARD_PIN 환경변수가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일에 DASHBOARD_PIN을 설정해주세요.")
     encrypted_packet = encrypt_payload(raw_data, pin)
 

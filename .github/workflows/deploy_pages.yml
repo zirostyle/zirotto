@@ -45,6 +45,8 @@ jobs:
           pip install -r requirements.txt || true
 
       - name: Build Dashboard Data
+        env:
+          DASHBOARD_PIN: ${{ secrets.DASHBOARD_PIN }}
         run: |
           python scripts/build_dashboard.py
 
