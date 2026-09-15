@@ -29,11 +29,16 @@ from check_results import (
 )
 
 
-def encrypt_payload(data: dict, pin: str = "112480") -> dict:
+def encrypt_payload(data: dict, pin: str = None) -> dict:
     """
     PBKDF2-HMAC-SHA256 및 Counter-Mode 스트림 암호화, HMAC 태그 인증을 사용해
     대시보드 데이터를 완벽하게 암호화합니다. (외부 라이브러리 불필요)
     """
+    if not pin:
+        pin = os.environ.get("DASHBOARD_PIN", "").strip()
+    if not pin:
+        raise ValueError("DASHBOARD_PIN 환경변수가 설정되지 않았습니다.")
+
     plaintext = json.dumps(data, ensure_ascii=False).encode("utf-8")
     salt = os.urandom(16)
     key = hashlib.pbkdf2_hmac("sha256", pin.encode("utf-8"), salt, 50000)
@@ -253,8 +258,17 @@ def build_dashboard_data():
         },
     }
 
-    # 6. PIN 번호 암호화 (DASHBOARD_PIN 환경변수 또는 기본값 '112480')
-    pin = os.environ.get("DASHBOARD_PIN", "112480").strip()
+    # 6. PIN 번호 암호화 (DASHBOARD_PIN 환경변수 필수)
+    pin = os.environ.get("DASHBOARD_PIN", "").strip()
+    if not pin:
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+            pin = os.environ.get("DASHBOARD_PIN", "").strip()
+        except Exception:
+            pass
+    if not pin:
+        raise ValueError("DASHBOARD_PIN 환경변수가 설정되지 않았습니다. GitHub Secrets 또는 .env 파일에 DASHBOARD_PIN을 설정해주세요.")
     encrypted_packet = encrypt_payload(raw_data, pin)
 
     with open(output_path, "w", encoding="utf-8") as f:

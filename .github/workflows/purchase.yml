@@ -75,7 +75,7 @@ jobs:
     - name: Build Dashboard Data
       if: always()
       env:
-        DASHBOARD_PIN: ${{ secrets.DASHBOARD_PIN || '112480' }}
+        DASHBOARD_PIN: ${{ secrets.DASHBOARD_PIN }}
       run: |
         python scripts/build_dashboard.py || echo "⚠️ Dashboard data build skipped"
 
