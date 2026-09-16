@@ -499,31 +499,33 @@ def get_purchased_pension720_from_mypage(page: Page, target_round: int = None) -
 
 def _get_frame(page: Page):
     """720 화면이 iframe인지 직접 페이지인지 감지하여 반환합니다."""
-    iframe_exists = page.locator("#ifrm_tab").count() > 0
-    if iframe_exists:
-        return page.frame_locator("#ifrm_tab")
+    for sel in ["iframe#ifrm_tab", "iframe[src*='LP72']", "iframe[src*='pension']", "iframe"]:
+        try:
+            if page.locator(sel).count() > 0:
+                return page.frame_locator(sel).first
+        except Exception:
+            continue
     return page
 
 
 def _navigate_to_lotto720(page: Page):
     """720 게임 화면으로 이동합니다."""
     desktop_urls = [
+        "http://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72",
         "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72",
         "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LP72&kind=1",
     ]
 
     last_url = ""
-    mobile_detected = False
     for idx, url in enumerate(desktop_urls, 1):
         try:
             print(f"  연금복권 접속 시도 {idx}: {url}")
-            page.goto(url, timeout=30000, wait_until="commit")
+            page.goto(url, timeout=20000, wait_until="commit")
             time.sleep(3)
 
             last_url = page.url
             print(f"  현재 URL (시도 {idx}): {last_url}")
             if "m.dhlottery.co.kr" in last_url:
-                mobile_detected = True
                 print("  ℹ️ 모바일 페이지로 이동됨 - 모바일 화면으로 계속 진행")
                 break
             else:
@@ -614,7 +616,24 @@ def _purchase_once(page: Page) -> dict:
 
     page.on("dialog", _on_dialog)
     try:
-        # 모바일 번호 선택 팝업 열기
+        # 1. 조 선택: "모든 조" 선택 시도
+        try:
+            all_jo_selectors = [
+                "span.jogroup:has-text('모든')",
+                ".lotto720_box.jogroup:has-text('모든')",
+                "a:has-text('모든 조')",
+                "button:has-text('모든 조')",
+                "label:has-text('모든 조')",
+                "[onclick*='all']",
+                ".jogroup.all",
+                ".jogroup.num0",
+            ]
+            _click_first(frame, all_jo_selectors, "모든 조 버튼", timeout=2000, force=True)
+            time.sleep(0.5)
+        except Exception:
+            pass
+
+        # 2. 모바일 번호 선택 팝업 열기 (모바일 환경인 경우)
         try:
             _click_first(
                 frame,
@@ -625,6 +644,7 @@ def _purchase_once(page: Page) -> dict:
                     ".btn_gray_st1.large.full",
                 ],
                 "번호 선택하기 버튼",
+                timeout=2000,
                 force=True,
             )
             time.sleep(1)
@@ -635,13 +655,13 @@ def _purchase_once(page: Page) -> dict:
         if _is_visible(frame, "#popup4", timeout=1200):
             number_target = frame.locator("#popup4")
 
-        # 자동번호 클릭
+        # 3. 자동번호 클릭
         try:
             _click_first(
                 number_target,
                 [
-                    "#popup4 .btn_wht.xsmall[onclick*='doAuto']",
                     ".lotto720_btn_auto_number",
+                    "#popup4 .btn_wht.xsmall[onclick*='doAuto']",
                     "a:has-text('자동번호')",
                     "button:has-text('자동번호')",
                     "button[onclick*='doAuto']",
@@ -661,13 +681,13 @@ def _purchase_once(page: Page) -> dict:
         # 선택된 번호 추출 1차 시도
         selected_number = _extract_selected_digits(number_target)
 
-        # 선택완료 클릭
+        # 4. 선택완료 클릭
         try:
             _click_first(
                 number_target,
                 [
-                    "#popup4 a[onclick*='doVerify']",
                     ".lotto720_btn_confirm_number",
+                    "#popup4 a[onclick*='doVerify']",
                     "a:has-text('선택완료')",
                     "button:has-text('선택완료')",
                     "button[onclick*='doVerify']",
@@ -686,15 +706,15 @@ def _purchase_once(page: Page) -> dict:
 
         payment_val = _read_amount(frame)
         if payment_val == 0:
-            print("  ⚠️ 결제 금액 표시를 읽지 못했습니다. 구매 절차를 계속 진행합니다.")
-        elif payment_val != PER_PURCHASE_AMOUNT:
-            raise Exception(f"결제 금액 불일치 (예상 {PER_PURCHASE_AMOUNT}원, 표시 {payment_val}원)")
+            time.sleep(1)
+            payment_val = _read_amount(frame)
 
-        # 구매하기 클릭
+        # 5. 구매하기 클릭
         try:
             _click_first(
                 frame,
                 [
+                    ".lotto720_btn_pay",
                     "a:has-text('구매하기')",
                     "button:has-text('구매하기')",
                     "button[onclick*='doOrder']",
@@ -713,8 +733,9 @@ def _purchase_once(page: Page) -> dict:
 
         time.sleep(1)
 
-        # 최종 확인 팝업 처리
+        # 6. 최종 확인 팝업 처리
         confirm_candidates = [
+            "#lotto720_popup_confirm .lotto720_popup_bottom_wrapper.btn_area a",
             "#lotto720_popup_confirm a.btn_blue",
             "#lotto720_popup_confirm a:has-text('확인')",
             "button:has-text('확인')",
@@ -726,7 +747,7 @@ def _purchase_once(page: Page) -> dict:
         except Exception:
             pass
 
-        # 결과 대기
+        # 7. 결과 대기 및 확인
         sale_message = ""
         for _ in range(8):
             time.sleep(1)
@@ -767,19 +788,45 @@ def _purchase_once(page: Page) -> dict:
         elif popup_tickets:
             tickets = popup_tickets
 
+        # 8. 엄격한 실제 결제 성공 검증 (잔액 차감, .saleCnt, 마이페이지 대조)
         success_detected = False
+
+        # (1) 구매 결과 팝업 내 구매 성공 매수 확인 (.saleCnt)
+        try:
+            sale_cnt_el = frame.locator(".saleCnt")
+            if sale_cnt_el.count() > 0 and sale_cnt_el.first.is_visible(timeout=2000):
+                cnt_txt = re.sub(r"[^0-9]", "", sale_cnt_el.first.inner_text() or "0")
+                if int(cnt_txt) >= 5:
+                    success_detected = True
+                    print(f"  ✅ 동행복권 발권 확인 (.saleCnt: {cnt_txt}매)")
+        except Exception:
+            pass
+
+        # (2) 결과 팝업(#popup1) 문구 확인
         sale_popup_visible = _is_visible(frame, "#popup1", timeout=1200)
-        if sale_popup_visible and ("구매가완료되었습니다" in normalized_sale or "부분적으로완료" in normalized_sale):
-            success_detected = True
-        elif any(("구매완료" in norm or "부분적으로완료" in norm) for norm in normalized_dialogs):
-            success_detected = True
-        elif balance_before >= 0 and balance_after >= 0 and (balance_before - balance_after) >= PER_PURCHASE_AMOUNT:
-            success_detected = True
-        elif len(tickets) > 0:
+        if sale_popup_visible and ("구매가완료되었습니다" in normalized_sale or "부분적으로완료" in normalized_sale or "구매완료" in normalized_sale):
             success_detected = True
 
+        # (3) 브라우저 dialog 메시지 확인
+        if any(("구매완료" in norm or "구매가완료" in norm or "정상적으로처리" in norm) for norm in normalized_dialogs):
+            success_detected = True
+
+        # (4) 잔액 차감 확인 (5,000원 이상 차감 확인)
+        if balance_before >= 0 and balance_after >= 0 and (balance_before - balance_after) >= PER_PURCHASE_AMOUNT:
+            success_detected = True
+            print(f"  ✅ 예치금 차감 확인: {balance_before:,}원 -> {balance_after:,}원 (₩{balance_before - balance_after:,} 차감)")
+
+        # (5) 구매 확정이 안 되었으면 마이페이지에서 즉시 크롤링 검증
         if not success_detected:
-            print("  ⚠️ 720 구매 완료 신호를 명확히 확인하지 못했습니다. (상위 잔액 검증으로 최종 판정)")
+            print("  🔍 구매 완료 신호 미확인 - 마이페이지 구매당첨내역에서 실구매 여부 즉시 검증...")
+            mypage_tickets = get_purchased_pension720_from_mypage(page, round_num)
+            if mypage_tickets and len(mypage_tickets) >= 5:
+                success_detected = True
+                tickets = mypage_tickets
+                print(f"  ✅ 마이페이지에서 실구매 확인 완료: {len(tickets)}매")
+
+        if not success_detected:
+            raise Exception("연금복권 720+ 구매 실패: 동행복권 결제 완료 신호 및 예치금 차감이 확인되지 않았습니다.")
 
         if tickets:
             num_display = tickets[0]['number'] if 'number' in tickets[0] else ''
