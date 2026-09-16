@@ -379,9 +379,12 @@ def get_purchased_pension720_from_mypage(page: Page, target_round: int = None) -
     tickets = []
     try:
         print("🌐 동행복권 마이페이지에서 연금복권 구매 번호 조회 시도...")
-        page.goto("https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", timeout=45000)
-        page.wait_for_load_state("domcontentloaded", timeout=20000)
+        page.goto("https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", timeout=30000, wait_until="commit")
         time.sleep(2)
+        try:
+            page.locator("body").first.wait_for(state="attached", timeout=15000)
+        except Exception:
+            pass
 
         try:
             page.select_option("select#lottoId", "LP72")
@@ -690,26 +693,57 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
     mobile_page = mobile_context.new_page()
 
     GAME_URLS = [
-        "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
         "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "http://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
     ]
     connected = False
     for gurl in GAME_URLS:
         try:
             print(f"  연금복권 모바일 구매 페이지 접속 시도: {gurl}")
-            mobile_page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
-            time.sleep(2)
+            mobile_page.goto(gurl, timeout=20000, wait_until="commit")
+            time.sleep(3)
+            mobile_page.locator("body").first.wait_for(state="attached", timeout=10000)
             if "/login" in mobile_page.url or "method=login" in mobile_page.url:
                 print("  ⚠️ 세션 만료 감지 -> 재로그인 후 재시도...")
                 from login import login
                 login(mobile_page)
-                mobile_page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
-                time.sleep(2)
+                mobile_page.goto(gurl, timeout=20000, wait_until="commit")
+                time.sleep(3)
             connected = True
+            print(f"  ✅ 접속 성공: {mobile_page.url}")
             break
         except Exception as conn_err:
-            print(f"  ⚠️ {gurl} 접속 실패: {conn_err}")
+            print(f"  ⚠️ {gurl} 접속 특이사항: {conn_err}")
             continue
+
+    if not connected:
+        try:
+            print("  📱 모바일 메인 페이지를 통한 진입 시도...")
+            mobile_page.goto("https://m.dhlottery.co.kr", timeout=20000, wait_until="commit")
+            time.sleep(3)
+            dismiss_popups(mobile_page)
+            _click_first_available(
+                mobile_page,
+                [
+                    "#pt720ImdtPrchs",
+                    "#btnMoPtgmPrchs",
+                    ".btnBuyPt720",
+                    "a:has-text('연금복권720+')",
+                    "a:has-text('연금복권')",
+                    "button:has-text('연금복권')",
+                ],
+                "모바일 메인 연금복권 바로구매 버튼",
+                timeout=10000,
+                force=True
+            )
+            time.sleep(3)
+            if "pension720" in mobile_page.url or "game" in mobile_page.url:
+                connected = True
+                print(f"  ✅ 모바일 메인을 통한 720 진입 성공: {mobile_page.url}")
+        except Exception as m_err:
+            print(f"  ⚠️ 모바일 메인 경유 진입 실패: {m_err}")
 
     if not connected:
         mobile_context.close()
@@ -725,8 +759,8 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
         for i in range(purchase_count):
             print(f"\n--- [세트 {i + 1}/{purchase_count}] 구매 진행 ---")
             if i > 0:
-                mobile_page.goto(mobile_page.url, timeout=20000, wait_until="domcontentloaded")
-                time.sleep(2)
+                mobile_page.goto(mobile_page.url, timeout=20000, wait_until="commit")
+                time.sleep(3)
 
             res = _purchase_once(mobile_page, round_num)
             total_cost += res.get("total_cost", 0)
