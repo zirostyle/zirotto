@@ -19,8 +19,8 @@ echo ""
 "$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" start || true
 
 # Run integrated auto purchase script (single browser session, single login)
-echo "🚀 Starting integrated purchase workflow..."
-if ! "$VENV_PYTHON" "$PROJECT_DIR/src/auto_purchase.py" 2>&1; then
+mkdir -p "$PROJECT_DIR/data"
+if ! "$VENV_PYTHON" "$PROJECT_DIR/src/auto_purchase.py" 2>&1 | tee "$PROJECT_DIR/data/run.log"; then
     echo "❌ Error: Auto purchase failed"
     "$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" error "Auto purchase workflow failed" || true
     exit 1

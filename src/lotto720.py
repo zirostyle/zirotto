@@ -672,24 +672,38 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
 
     print(f"🚀 연금복권 720+ 구매 시작 (목표 금액: ₩{normalized_amount:,}, {purchase_count}세트, 총 {purchase_count * 5}매)")
 
-    # 모바일 뷰포트 설정 (안정적인 모바일 구매 UI)
-    page.set_viewport_size({"width": 430, "height": 932})
+    browser = page.context.browser
+    storage = page.context.storage_state()
+
+    # 모바일 전용 컨텍스트 생성 (iPhone User-Agent, 터치 에뮬레이션, 모바일 뷰포트)
+    mobile_context = browser.new_context(
+        storage_state=storage,
+        user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
+        viewport={"width": 393, "height": 852},
+        is_mobile=True,
+        has_touch=True,
+        extra_http_headers={
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Sec-CH-UA-Mobile": "?1",
+        }
+    )
+    mobile_page = mobile_context.new_page()
 
     GAME_URLS = [
-        "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
         "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
     ]
     connected = False
     for gurl in GAME_URLS:
         try:
             print(f"  연금복권 모바일 구매 페이지 접속 시도: {gurl}")
-            page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
+            mobile_page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
             time.sleep(2)
-            if "/login" in page.url or "method=login" in page.url:
+            if "/login" in mobile_page.url or "method=login" in mobile_page.url:
                 print("  ⚠️ 세션 만료 감지 -> 재로그인 후 재시도...")
                 from login import login
-                login(page)
-                page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
+                login(mobile_page)
+                mobile_page.goto(gurl, timeout=30000, wait_until="domcontentloaded")
                 time.sleep(2)
             connected = True
             break
@@ -698,10 +712,10 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
             continue
 
     if not connected:
-        page.set_viewport_size({"width": 1920, "height": 1080})
+        mobile_context.close()
         raise RuntimeError("연금복권 720+ 구매 페이지 접속 실패")
 
-    round_num = get_current_pension720_round(page=page)
+    round_num = get_current_pension720_round(page=mobile_page)
     print(f"🎯 연금복권 720+ 판매 회차: 제 {round_num}회")
 
     total_cost = 0
@@ -711,10 +725,10 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
         for i in range(purchase_count):
             print(f"\n--- [세트 {i + 1}/{purchase_count}] 구매 진행 ---")
             if i > 0:
-                page.goto(page.url, timeout=20000, wait_until="domcontentloaded")
+                mobile_page.goto(mobile_page.url, timeout=20000, wait_until="domcontentloaded")
                 time.sleep(2)
 
-            res = _purchase_once(page, round_num)
+            res = _purchase_once(mobile_page, round_num)
             total_cost += res.get("total_cost", 0)
             if res.get("tickets"):
                 all_tickets.extend(res["tickets"])
@@ -723,7 +737,7 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
         # 번호 확인 fallback
         if not all_tickets or len(all_tickets) < total_cost // 1000:
             print("🔍 발권 번호 확인을 위해 마이페이지 구매내역을 최종 조회합니다...")
-            mypage_tickets = get_purchased_pension720_from_mypage(page, round_num)
+            mypage_tickets = get_purchased_pension720_from_mypage(mobile_page, round_num)
             if mypage_tickets:
                 all_tickets = mypage_tickets
 
@@ -757,9 +771,9 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
             notify_lotto720_purchase(False, error_msg=error_msg, amount=normalized_amount)
         raise
     finally:
-        # 데스크톱 뷰포트 복원 (로또 6/45 및 잔액 확인용)
         try:
-            page.set_viewport_size({"width": 1920, "height": 1080})
+            page.context.add_cookies(mobile_context.cookies())
+            mobile_context.close()
         except Exception:
             pass
 
