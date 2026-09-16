@@ -1,3 +1,76 @@
 {
-  "history": []
+  "history": [
+    {
+      "round": 333,
+      "purchase_date": "2026-09-16 14:34:11",
+      "total_cost": 10000,
+      "ticket_count": 10,
+      "tickets": [
+        {
+          "group": "1조",
+          "number": "087560"
+        },
+        {
+          "group": "2조",
+          "number": "087560"
+        },
+        {
+          "group": "3조",
+          "number": "087560"
+        },
+        {
+          "group": "4조",
+          "number": "087560"
+        },
+        {
+          "group": "5조",
+          "number": "087560"
+        },
+        {
+          "group": "1조",
+          "number": "995424"
+        },
+        {
+          "group": "2조",
+          "number": "995424"
+        },
+        {
+          "group": "3조",
+          "number": "995424"
+        },
+        {
+          "group": "4조",
+          "number": "995424"
+        },
+        {
+          "group": "5조",
+          "number": "995424"
+        }
+      ],
+      "sets": [
+        {
+          "set_index": 1,
+          "number": "087560",
+          "groups": [
+            "1조",
+            "2조",
+            "3조",
+            "4조",
+            "5조"
+          ]
+        },
+        {
+          "set_index": 2,
+          "number": "995424",
+          "groups": [
+            "1조",
+            "2조",
+            "3조",
+            "4조",
+            "5조"
+          ]
+        }
+      ]
+    }
+  ]
 }
