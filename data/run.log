@@ -1,0 +1,137 @@
+🌐 브라우저 시작...
+
+==================================================
+🔐 로그인 중...
+==================================================
+Starting login process...
+🔗 로그인 페이지 접속 시도: https://www.dhlottery.co.kr/login
+📸 로그인 전 스크린샷: debug_before_login.png
+⏳ 로그인 처리 대기 중...
+⚠️ networkidle 타임아웃, 계속 진행...
+📸 로그인 후 스크린샷: debug_after_login.png
+📍 로그인 후 URL: https://www.dhlottery.co.kr/main
+🔍 로그인 상태 확인 중...
+✅ 로그인 확인됨: text=/로그아웃/
+✅ Logged in successfully
+
+============================================================
+🎟️ 연금복권 720+ 당첨 결과 확인 및 자동 매칭 시작
+============================================================
+🌐 네이버 검색을 통해 최신 연금복권 720+ 당첨 번호를 조회합니다...
+🎯 최신 회차: 332회 (naver_search)
+   1등 번호: 4조 6 9 8 7 4 0
+   보너스 번호: 각조 8 3 3 5 3 9
+   추첨 일자: 2026-09-10
+
+⚠️ 332회 연금복권 구매 번호 내역을 찾지 못했습니다.
+📨 텔레그램 메시지 전송 성공!
+
+============================================================
+🎰 로또 6/45 당첨 결과 확인 및 자동 매칭 시작
+============================================================
+🌐 네이버 검색을 통해 최신 로또 당첨 번호를 조회합니다...
+🎯 최신 회차: 332회 (naver_search)
+   당첨 번호: 07 13 16 23 24 43 + 보너스: 09
+   추첨 일자: 2026-09-12
+   1등 당첨금: 1,628,391,980원
+
+📋 332회 구매 번호 대조 중... (5게임)
+  [A] 🌌 우주 황금 밸런스: 낙첨 (일치: 1개)
+  [B] 🔥 역대 최빈출 집중: 낙첨 (일치: 2개)
+  [C] ⚡ 주기 반등 콜드 조합: 낙첨 (일치: 0개)
+  [D] 📐 수학적 황금비 조화: 낙첨 (일치: 1개)
+  [E] 🍀 카오스 우주 에너지: 낙첨 (일치: 1개)
+
+📬 텔레그램 로또645 결과 리포트 전송 중...
+📨 텔레그램 메시지 전송 성공!
+✅ 텔레그램 로또645 결과 리포트 전송 완료!
+============================================================
+
+==================================================
+💰 사전 잔액 점검 및 예치금 충전 확인...
+==================================================
+🔍 마이페이지로 이동 중...
+⏳ 페이지 로딩 대기 중...
+📸 스크린샷 저장: debug_mypage.png
+📄 HTML 저장: debug_mypage.html
+📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
+🔍 잔액 요소를 찾는 중...
+🔍 시도 중: #totalAmt
+✅ 찾음: #totalAmt = '30,000'
+💰 예치금 텍스트: 30,000
+🔍 시도 중: #divCrntEntrsAmt
+✅ 찾음: #divCrntEntrsAmt = '30,000
+원'
+🛒 구매가능 텍스트: 30,000
+원
+💰 현재 예치금 잔액: 30,000원
+🛒 현재 구매가능 금액: 30,000원
+🎯 금주 총 구매 필요 금액: ₩15,000 (연금복권 ₩10,000 + 로또645 ₩5,000)
+✅ 구매 잔액 충분: ₩30,000
+
+==================================================
+🎟️ 연금복권 720+ 구매 중... (목표: ₩10,000)
+==================================================
+🚀 연금복권 720+ 구매 시작 (목표 금액: ₩10,000, 2세트, 총 10매)
+  연금복권 모바일 구매 페이지 접속 시도: https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 실패: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "domcontentloaded"
+
+  연금복권 모바일 구매 페이지 접속 시도: https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 실패: Page.goto: Timeout 30000ms exceeded.
+Call log:
+  - navigating to "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "domcontentloaded"
+
+❌ 연금복권 720+ 구매 실패: 연금복권 720+ 구매 페이지 접속 실패
+
+==================================================
+⏭️ 로또 6/45 제 1241회는 이미 5게임 구매 완료되어 중복 구매를 건너뜁니다.
+==================================================
+
+==================================================
+💰 구매 완료 후 최종 잔액 확인 중...
+==================================================
+🔍 마이페이지로 이동 중...
+⚠️ 잔액 조회 실패: Page.goto: Timeout 60000ms exceeded.
+Call log:
+  - navigating to "https://www.dhlottery.co.kr/mypage/home", waiting until "domcontentloaded"
+
+⚠️ 재로그인 실패: Page.goto: Timeout 60000ms exceeded.
+Call log:
+  - navigating to "https://www.dhlottery.co.kr/main", waiting until "domcontentloaded"
+
+🔄 잔액 조회 재시도 2/3
+🔍 마이페이지로 이동 중...
+⚠️ 잔액 조회 실패: Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.dhlottery.co.kr/mypage/home
+Call log:
+  - navigating to "https://www.dhlottery.co.kr/mypage/home", waiting until "domcontentloaded"
+
+⚠️ 재로그인 실패: Page.goto: Navigation to "https://www.dhlottery.co.kr/main" is interrupted by another navigation to "chrome-error://chromewebdata/"
+Call log:
+  - navigating to "https://www.dhlottery.co.kr/main", waiting until "domcontentloaded"
+
+🔄 잔액 조회 재시도 3/3
+🔍 마이페이지로 이동 중...
+⏳ 페이지 로딩 대기 중...
+📸 스크린샷 저장: debug_mypage.png
+📄 HTML 저장: debug_mypage.html
+📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
+🔍 잔액 요소를 찾는 중...
+🔍 시도 중: #totalAmt
+✅ 찾음: #totalAmt = '30,000'
+💰 예치금 텍스트: 30,000
+🔍 시도 중: #divCrntEntrsAmt
+✅ 찾음: #divCrntEntrsAmt = '30,000
+원'
+🛒 구매가능 텍스트: 30,000
+원
+💰 최종 예치금 잔액: 30,000원
+🛒 최종 구매가능: 30,000원
+📨 텔레그램 메시지 전송 성공!
+
+==================================================
+✅ 모든 작업 완료!
+==================================================
+
+🧹 브라우저 종료 중...
