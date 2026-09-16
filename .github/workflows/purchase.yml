@@ -88,4 +88,14 @@ jobs:
         git diff-index --quiet HEAD || git commit -m "chore: save purchased lottery numbers and dashboard data [skip ci]"
         git push origin HEAD || echo "ℹ️ Nothing to push or push skipped"
 
+    - name: Upload Debug Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: purchase-debug-artifacts
+        path: |
+          *.png
+          data/*.json
+        if-no-files-found: ignore
+
 
