@@ -332,7 +332,7 @@ def save_purchased_lotto(round_num: int, games: list, total_cost: int):
 
 
 def get_current_round(page=None) -> int:
-    """현재 회차 번호를 반환합니다."""
+    """현재 판매 중인 로또 6/45 회차 번호를 반환합니다."""
     # 1. 페이지에서 추출 시도
     if page:
         try:
@@ -341,18 +341,27 @@ def get_current_round(page=None) -> int:
                 txt = cur_el.inner_text(timeout=2000)
                 m = re.search(r'(\d+)', txt)
                 if m:
-                    return int(m.group(1))
+                    val = int(m.group(1))
+                    if 1000 <= val <= 3000:
+                        return val
         except Exception:
             pass
             
-    # 2. 날짜 기반 회차 계산 (로또 1회: 2002-12-07 20:45)
-    from datetime import datetime, timezone, timedelta
-    kst = timezone(timedelta(hours=9))
-    now = datetime.now(kst)
-    first_draw = datetime(2002, 12, 7, 20, 45, tzinfo=kst)
-    diff_days = (now - first_draw).total_seconds() / 86400
-    estimated_round = int(diff_days // 7) + 1
-    return estimated_round
+    # 2. 날짜 기반 회차 계산
+    # 로또 1회 추첨 및 판매 마감: 2002-12-07 20:00 KST
+    # 매주 토요일 20:00에 다음 회차 판매가 개시되므로 diff_weeks + 2가 현재 판매 중인 회차입니다.
+    try:
+        from datetime import datetime, timezone, timedelta
+        kst = timezone(timedelta(hours=9))
+        now = datetime.now(kst)
+        first_draw = datetime(2002, 12, 7, 20, 0, tzinfo=kst)
+        diff_seconds = (now - first_draw).total_seconds()
+        if diff_seconds >= 0:
+            return int(diff_seconds // (7 * 86400)) + 2
+    except Exception:
+        pass
+
+    return 1243
 
 
 def purchase_lotto645(page, auto_games: int = 0, manual_numbers: list = None) -> dict:

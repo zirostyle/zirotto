@@ -86,7 +86,9 @@ def get_latest_lotto_winning_numbers() -> dict:
         with urllib.request.urlopen(req, timeout=8) as response:
             html = response.read().decode('utf-8')
 
-        round_match = re.search(r'([0-9]+)회\s*당첨번호', html)
+        round_match = re.search(r'([1-9][0-9]{3})\s*회', html)
+        if not round_match:
+            round_match = re.search(r'([0-9]+)회\s*당첨번호', html)
         if not round_match:
             round_match = re.search(r'([0-9]+)회', html)
         round_num = int(round_match.group(1)) if round_match else 0
@@ -115,7 +117,7 @@ def get_latest_lotto_winning_numbers() -> dict:
         date_match = re.search(r'([0-9]{4}\.[0-9]{2}\.[0-9]{2})', html)
         draw_date = date_match.group(1).replace('.', '-') if date_match else datetime.now().strftime('%Y-%m-%d')
 
-        if round_num > 0 and len(winning_numbers) == 6 and bonus > 0:
+        if round_num >= 1000 and len(winning_numbers) == 6 and bonus > 0:
             return {
                 'round': round_num,
                 'winning_numbers': winning_numbers,
@@ -137,7 +139,9 @@ def get_latest_lotto_winning_numbers() -> dict:
         with urllib.request.urlopen(req, timeout=8) as response:
             html = response.read().decode('utf-8')
 
-        round_match = re.search(r'([0-9]+)회', html)
+        round_match = re.search(r'([1-9][0-9]{3})\s*회', html)
+        if not round_match:
+            round_match = re.search(r'([0-9]+)회', html)
         round_num = int(round_match.group(1)) if round_match else 0
         balls = [int(n) for n in re.findall(r'<span class="lot_num[^>]*>([0-9]+)</span>', html)]
         if len(balls) >= 7:
@@ -177,6 +181,7 @@ def get_purchased_lotto_from_file(target_round: int = None) -> dict:
             for item in reversed(history):
                 if item.get("round") == target_round:
                     return item
+            return None
         return history[-1]
     except Exception as e:
         print(f"⚠️ 로또 구매 내역 파일 읽기 실패: {e}")
@@ -480,6 +485,7 @@ def get_purchased_pension720_from_file(target_round: int = None) -> dict:
             for item in reversed(history):
                 if item.get("round") == target_round:
                     return item
+            return None
         return history[-1]
     except Exception as e:
         print(f"⚠️ 연금복권 구매 내역 파일 읽기 실패: {e}")

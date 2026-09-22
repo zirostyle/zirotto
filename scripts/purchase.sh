@@ -29,6 +29,3 @@ fi
 echo ""
 echo "✅ All tasks completed successfully!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Send completion notification
-"$VENV_PYTHON" "$PROJECT_DIR/src/notify_telegram.py" complete

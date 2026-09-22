@@ -153,8 +153,30 @@ def run_all_tasks(playwright: Playwright) -> None:
         auto_games = _safe_int_env("AUTO_GAMES", 5)
         manual_games = _safe_manual_games_count()
         lotto645_amount = (auto_games + manual_games) * 1000
-        MIN_REQUIRED_NEXT = max(lotto720_amount + lotto645_amount, 10000)
         CHARGE_AMOUNT = 20000
+
+        # 중복 구매 여부 사전 점검
+        from lotto720 import get_current_pension720_round, get_purchased_pension720_from_file
+        from lotto645 import get_current_round
+        from check_results import get_purchased_lotto_from_file
+
+        cur_round_720 = get_current_pension720_round()
+        existing_720 = get_purchased_pension720_from_file(cur_round_720)
+        target_tickets_720 = lotto720_amount // 1000
+        pension_already_bought = bool(existing_720 and len(existing_720.get("tickets", [])) >= target_tickets_720)
+
+        lotto645_enabled = _is_enabled("ENABLE_LOTTO645", "1") and _is_lotto645_date_open()
+        cur_round_645 = get_current_round(page)
+        existing_645 = get_purchased_lotto_from_file(cur_round_645)
+        target_games_645 = auto_games + manual_games
+        lotto645_already_bought = bool(existing_645 and len(existing_645.get("games", [])) >= target_games_645)
+
+        needed_amount = 0
+        if not pension_already_bought:
+            needed_amount += lotto720_amount
+        if lotto645_enabled and not lotto645_already_bought:
+            needed_amount += lotto645_amount
+        MIN_REQUIRED_NEXT = max(needed_amount, 5000) if needed_amount > 0 else 0
 
         # Step 3: 사전 예치금 잔액 확인 및 부족 시 자동 충전 (구매 전 필수 점검)
         print("\n" + "=" * 50)
@@ -164,9 +186,9 @@ def run_all_tasks(playwright: Playwright) -> None:
             balance_info = _get_balance_resilient(page)
             print(f"💰 현재 예치금 잔액: {balance_info['deposit_balance']:,}원")
             print(f"🛒 현재 구매가능 금액: {balance_info['available_amount']:,}원")
-            print(f"🎯 금주 총 구매 필요 금액: ₩{MIN_REQUIRED_NEXT:,} (연금복권 ₩{lotto720_amount:,} + 로또645 ₩{lotto645_amount:,})")
+            print(f"🎯 금주 잔여 구매 필요 금액: ₩{MIN_REQUIRED_NEXT:,} (연금 ₩{0 if pension_already_bought else lotto720_amount:,} + 로또 ₩{0 if lotto645_already_bought else lotto645_amount:,})")
 
-            if balance_info['available_amount'] < MIN_REQUIRED_NEXT:
+            if MIN_REQUIRED_NEXT > 0 and balance_info['available_amount'] < MIN_REQUIRED_NEXT:
                 print(f"💳 잔액 부족 (보유: ₩{balance_info['available_amount']:,} < 필요: ₩{MIN_REQUIRED_NEXT:,}). ₩{CHARGE_AMOUNT:,} 충전 진행...")
                 try:
                     success = charge_balance(page, CHARGE_AMOUNT)
@@ -187,33 +209,32 @@ def run_all_tasks(playwright: Playwright) -> None:
             print(f"⚠️ 사전 잔액/충전 점검 실패: {e}")
 
         # Step 4: Buy Lotto 720 (연금복권 720+ 10,000원 = 2세트, 10매)
-        print("\n" + "=" * 50)
-        print(f"🎟️ 연금복권 720+ 구매 중... (목표: ₩{lotto720_amount:,})")
-        print("=" * 50)
-        try:
-            result_720 = purchase_lotto720(page, lotto720_amount)
-            if result_720 and result_720.get('total_cost', 0) > 0:
-                print(f"✅ 연금복권 720+ 구매 완료! (₩{result_720['total_cost']:,})")
-            else:
-                print("⚠️ 연금복권 720+ 구매 결과를 확인할 수 없습니다.")
-        except Exception as e:
-            print(f"❌ 연금복권 720+ 구매 실패: {e}")
+        if pension_already_bought:
+            print("\n" + "=" * 50)
+            print(f"⏭️ 연금복권 720+ 제 {cur_round_720}회는 이미 {len(existing_720['tickets'])}매 구매 완료되어 중복 구매를 건너뜁니다.")
+            print("=" * 50)
+        else:
+            print("\n" + "=" * 50)
+            print(f"🎟️ 연금복권 720+ 구매 중... (목표: ₩{lotto720_amount:,})")
+            print("=" * 50)
+            try:
+                result_720 = purchase_lotto720(page, lotto720_amount)
+                if result_720 and result_720.get('total_cost', 0) > 0:
+                    print(f"✅ 연금복권 720+ 구매 완료! (₩{result_720['total_cost']:,})")
+                else:
+                    print("⚠️ 연금복권 720+ 구매 결과를 확인할 수 없습니다.")
+            except Exception as e:
+                print(f"❌ 연금복권 720+ 구매 실패: {e}")
 
         # Step 5: Buy Lotto 645 (로또 6/45 - 우주의 기운 번호)
-        lotto645_enabled = _is_enabled("ENABLE_LOTTO645", "1") and _is_lotto645_date_open()
         if lotto645_enabled:
-            # 금주 회차 중복 구매 방지 검사
-            from lotto645 import get_current_round
-            from check_results import get_purchased_lotto_from_file
-            cur_round = get_current_round(page)
-            existing_record = get_purchased_lotto_from_file(cur_round)
-            if existing_record and len(existing_record.get("games", [])) >= 5:
+            if lotto645_already_bought:
                 print("\n" + "=" * 50)
-                print(f"⏭️ 로또 6/45 제 {cur_round}회는 이미 {len(existing_record['games'])}게임 구매 완료되어 중복 구매를 건너뜁니다.")
+                print(f"⏭️ 로또 6/45 제 {cur_round_645}회는 이미 {len(existing_645['games'])}게임 구매 완료되어 중복 구매를 건너뜁니다.")
                 print("=" * 50)
             else:
                 print("\n" + "=" * 50)
-                print("🎫 로또 6/45 구매 중...")
+                print(f"🎫 로또 6/45 제 {cur_round_645}회 구매 중...")
                 print("=" * 50)
                 
                 try:
