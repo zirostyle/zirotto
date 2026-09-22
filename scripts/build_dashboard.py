@@ -186,21 +186,20 @@ def build_dashboard_data():
 
         round_won = 0
         matched_tickets = []
-        if pwin_info:
-            for t in tickets:
-                grp = t.get("group", 0)
-                num = t.get("number", "")
-                m = check_pension720_winning(grp, num, pwin_info["win_group"], pwin_info["win_number"], pwin_info["bonus_number"])
-                if m["rank"]:
-                    pension_rank_counts[m["rank"]] += 1
-                    round_won += m["prize_lump_sum"]
+        if pwin_info and tickets:
+            p_res = check_pension720_winning(tickets, pwin_info)
+            round_won = p_res.get("total_lump_sum", 0)
+            for rk, cnt in p_res.get("prizes", {}).items():
+                if rk in pension_rank_counts:
+                    pension_rank_counts[rk] += cnt
+            for tr in p_res.get("ticket_results", []):
                 matched_tickets.append({
-                    "group": grp,
-                    "number": num,
-                    "rank": m["rank"],
-                    "matched_digits": m["matched_digits"],
-                    "prize_monthly": m["prize_monthly"],
-                    "prize_lump_sum": m["prize_lump_sum"],
+                    "group": tr.get("group", 0),
+                    "number": tr.get("number", ""),
+                    "rank": tr.get("rank"),
+                    "prize_desc": tr.get("prize_desc", "낙첨"),
+                    "prize_monthly": tr.get("pension", 0),
+                    "prize_lump_sum": tr.get("lump_sum", 0),
                 })
         else:
             for t in tickets:
@@ -208,7 +207,7 @@ def build_dashboard_data():
                     "group": t.get("group", 0),
                     "number": t.get("number", ""),
                     "rank": None,
-                    "matched_digits": 0,
+                    "prize_desc": "추첨 대기",
                     "prize_monthly": 0,
                     "prize_lump_sum": 0,
                 })
