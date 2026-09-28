@@ -18,22 +18,22 @@ Starting login process...
 🎟️ 연금복권 720+ 당첨 결과 확인 및 자동 매칭 시작
 ============================================================
 🌐 네이버 검색을 통해 최신 연금복권 720+ 당첨 번호를 조회합니다...
-🎯 최신 회차: 333회 (naver_search)
-   1등 번호: 4조 0 0 8 9 7 3
-   보너스 번호: 각조 0 5 0 3 0 5
-   추첨 일자: 2026-09-17
+🎯 최신 회차: 334회 (naver_search)
+   1등 번호: 2조 9 5 6 0 2 9
+   보너스 번호: 각조 0 2 2 0 4 9
+   추첨 일자: 2026-09-24
 
-📋 333회 구매 복권 대조 중... (10매)
-  [1조] 087560: 낙첨
-  [2조] 087560: 낙첨
-  [3조] 087560: 낙첨
-  [4조] 087560: 낙첨
-  [5조] 087560: 낙첨
-  [1조] 995424: 낙첨
-  [2조] 995424: 낙첨
-  [3조] 995424: 낙첨
-  [4조] 995424: 낙첨
-  [5조] 995424: 낙첨
+📋 334회 구매 복권 대조 중... (10매)
+  [1조] 509408: 낙첨
+  [2조] 509408: 낙첨
+  [3조] 509408: 낙첨
+  [4조] 509408: 낙첨
+  [5조] 509408: 낙첨
+  [1조] 352251: 낙첨
+  [2조] 352251: 낙첨
+  [3조] 352251: 낙첨
+  [4조] 352251: 낙첨
+  [5조] 352251: 낙첨
 
 📬 텔레그램 연금복권 결과 리포트 전송 중...
 📨 텔레그램 메시지 전송 성공!
@@ -44,16 +44,16 @@ Starting login process...
 🎰 로또 6/45 당첨 결과 확인 및 자동 매칭 시작
 ============================================================
 🌐 네이버 검색을 통해 최신 로또 당첨 번호를 조회합니다...
-🎯 최신 회차: 1242회 (naver_search)
-   당첨 번호: 02 04 10 16 31 41 + 보너스: 09
-   추첨 일자: 2026-09-19
-   1등 당첨금: 3,281,029,250원
+🎯 최신 회차: 1243회 (naver_search)
+   당첨 번호: 09 18 24 38 43 44 + 보너스: 35
+   추첨 일자: 2026-09-26
+   1등 당첨금: 2,592,525,282원
 
-📋 1242회 구매 번호 대조 중... (5게임)
-  [A] 🌌 우주 황금 밸런스: 낙첨 (일치: 0개)
-  [B] 🔥 역대 최빈출 집중: 낙첨 (일치: 2개)
-  [C] ⚡ 주기 반등 콜드 조합: 낙첨 (일치: 1개)
-  [D] 📐 수학적 황금비 조화: 낙첨 (일치: 0개)
+📋 1243회 구매 번호 대조 중... (5게임)
+  [A] 🌌 우주 황금 밸런스: 낙첨 (일치: 1개)
+  [B] 🔥 역대 최빈출 집중: 낙첨 (일치: 1개)
+  [C] ⚡ 주기 반등 콜드 조합: 낙첨 (일치: 0개)
+  [D] 📐 수학적 황금비 조화: 낙첨 (일치: 1개)
   [E] 🍀 카오스 우주 에너지: 낙첨 (일치: 0개)
 
 📬 텔레그램 로또645 결과 리포트 전송 중...
@@ -71,54 +71,119 @@ Starting login process...
 📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
 🔍 잔액 요소를 찾는 중...
 🔍 시도 중: #totalAmt
-✅ 찾음: #totalAmt = '10,000'
-💰 예치금 텍스트: 10,000
+✅ 찾음: #totalAmt = '5,000'
+💰 예치금 텍스트: 5,000
 🔍 시도 중: #divCrntEntrsAmt
-✅ 찾음: #divCrntEntrsAmt = '10,000
+✅ 찾음: #divCrntEntrsAmt = '5,000
 원'
-🛒 구매가능 텍스트: 10,000
+🛒 구매가능 텍스트: 5,000
 원
-💰 현재 예치금 잔액: 10,000원
-🛒 현재 구매가능 금액: 10,000원
-🎯 금주 잔여 구매 필요 금액: ₩5,000 (연금 ₩0 + 로또 ₩5,000)
-✅ 구매 잔액 충분: ₩10,000
+💰 현재 예치금 잔액: 5,000원
+🛒 현재 구매가능 금액: 5,000원
+🎯 금주 잔여 구매 필요 금액: ₩15,000 (연금 ₩10,000 + 로또 ₩5,000)
+💳 잔액 부족 (보유: ₩5,000 < 필요: ₩15,000). ₩20,000 충전 진행...
+💳 충전 페이지로 이동 중... (₩20,000)
+  📸 충전 페이지 초기 화면 저장
+  간편충전 탭 클릭...
+  ✅ 간편충전 선택: text=간편충전
+  📸 탭 선택 후 화면 저장
+  금액 선택: 20,000원
+  📸 금액 선택 후 화면 저장
+  충전하기 버튼 찾기...
+  시도: button:has-text('충전하기') (2개 발견)
+  ✅ 충전 버튼 클릭: button:has-text('충전하기')
+  📸 버튼 클릭 후 화면 저장
+  PIN 키패드 대기 중...
+  키패드 찾기: .nppfs-keypad
+  ✅ 키패드 발견: .nppfs-keypad
+  키패드 분석 중...
+  인식된 숫자: 10개
+  PIN 입력 중... (길이: 6)
+  충전 완료 대기 중...
+✅ 충전 완료!
+📨 텔레그램 메시지 전송 성공!
+✅ 충전 완료! ₩20,000
+🔍 마이페이지로 이동 중...
+⏳ 페이지 로딩 대기 중...
+📸 스크린샷 저장: debug_mypage.png
+📄 HTML 저장: debug_mypage.html
+📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
+🔍 잔액 요소를 찾는 중...
+🔍 시도 중: #totalAmt
+✅ 찾음: #totalAmt = '25,000'
+💰 예치금 텍스트: 25,000
+🔍 시도 중: #divCrntEntrsAmt
+✅ 찾음: #divCrntEntrsAmt = '25,000
+원'
+🛒 구매가능 텍스트: 25,000
+원
+🛒 충전 후 구매가능 금액: ₩25,000
 
 ==================================================
-⏭️ 연금복권 720+ 제 334회는 이미 10매 구매 완료되어 중복 구매를 건너뜁니다.
+🎟️ 연금복권 720+ 구매 중... (목표: ₩10,000)
 ==================================================
+🚀 연금복권 720+ 구매 시작 (목표 금액: ₩10,000, 2세트, 총 10매)
+  연금복권 모바일 구매 페이지 접속 시도: https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 특이사항: Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "commit"
+
+  연금복권 모바일 구매 페이지 접속 시도: http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 특이사항: Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "commit"
+
+  연금복권 모바일 구매 페이지 접속 시도: https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 특이사항: Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "commit"
+
+  연금복권 모바일 구매 페이지 접속 시도: http://el.dhlottery.co.kr/game_mobile/pension720/game.jsp
+  ⚠️ http://el.dhlottery.co.kr/game_mobile/pension720/game.jsp 접속 특이사항: Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "http://el.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "commit"
+
+  📱 모바일 메인 페이지를 통한 진입 시도...
+  ⚠️ 모바일 메인 경유 진입 실패: Page.goto: Timeout 20000ms exceeded.
+Call log:
+  - navigating to "https://m.dhlottery.co.kr/", waiting until "commit"
+
+❌ 연금복권 720+ 구매 실패: 연금복권 720+ 구매 페이지 접속 실패
 
 ==================================================
-🎫 로또 6/45 제 1243회 구매 중...
+🎫 로또 6/45 제 1244회 구매 중...
 ==================================================
 
 🔮 우주의 기운 최고 당첨률 5개 번호 조합 생성 중...
   ✨ 우주의 기운 5대 특화 전략 조합 생성 완료:
-  [A] 🌌 우주 황금 밸런스: 08 17 22 24 36 39
-  [B] 🔥 역대 최빈출 집중: 01 10 24 27 34 37
-  [C] ⚡ 주기 반등 콜드 조합: 16 21 23 26 27 32
-  [D] 📐 수학적 황금비 조화: 02 10 24 31 32 45
-  [E] 🍀 카오스 우주 에너지: 14 21 23 28 31 32
-⏰ 현재 시간: 2026-09-22 14:00:45 (KST, 화요일)
+  [A] 🌌 우주 황금 밸런스: 01 16 27 32 34 41
+  [B] 🔥 역대 최빈출 집중: 01 06 33 34 43 45
+  [C] ⚡ 주기 반등 콜드 조합: 09 21 23 28 34 43
+  [D] 📐 수학적 황금비 조화: 02 03 13 26 27 42
+  [E] 🍀 카오스 우주 에너지: 01 14 17 20 27 35
+⏰ 현재 시간: 2026-09-28 09:14:48 (KST, 월요일)
 ✅ 구매 가능 시간입니다!
   로또645 페이지 이동 중...
   ⚠️ 페이지 로드 실패, 재시도... (Page.goto: Timeout 90000ms exceeded.
 Call log:
   -)
   재시도 1/2...
+  ⚠️ 페이지 로드 실패, 재시도... (Page.goto: net::ERR_CONNECTION_TIMED_OUT at https:)
+  재시도 2/2...
   페이지 로드 완료
 ✅ 로또 6/45 페이지 로드 완료
-🎯 로또 6/45 구매 대상 회차: 1243회
+🎯 로또 6/45 구매 대상 회차: 1244회
 
 수동 번호 선택 중... (5게임)
-  게임 [A] 🌌 우주 황금 밸런스: 08 17 22 24 36 39
+  게임 [A] 🌌 우주 황금 밸런스: 01 16 27 32 34 41
   ✅ [A] 추가 완료
-  게임 [B] 🔥 역대 최빈출 집중: 01 10 24 27 34 37
+  게임 [B] 🔥 역대 최빈출 집중: 01 06 33 34 43 45
   ✅ [B] 추가 완료
-  게임 [C] ⚡ 주기 반등 콜드 조합: 16 21 23 26 27 32
+  게임 [C] ⚡ 주기 반등 콜드 조합: 09 21 23 28 34 43
   ✅ [C] 추가 완료
-  게임 [D] 📐 수학적 황금비 조화: 02 10 24 31 32 45
+  게임 [D] 📐 수학적 황금비 조화: 02 03 13 26 27 42
   ✅ [D] 추가 완료
-  게임 [E] 🍀 카오스 우주 에너지: 14 21 23 28 31 32
+  게임 [E] 🍀 카오스 우주 에너지: 01 14 17 20 27 35
   ✅ [E] 추가 완료
 ✅ 구매 전 번호 추출 성공: 5세트
 🛒 구매 버튼 클릭...
@@ -129,22 +194,18 @@ Call log:
 ℹ️ 구매 완료 레이어 미감지 -> 마이페이지 구매 내역에서 검증 진행
 
 🔍 구매 내역 최종 검증 및 번호 추출 중...
-⚠️ 구매 내역 페이지 확인 중 특이사항: Page.goto: Timeout 30000ms exceeded.
-Call log:
-  - navigating to "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", waiting until "commit"
-
+  📝 구매 완료 확인: 사전 추출된 번호 조합 사용
 
 ✅ Lotto 6/45: 구매 완료! (5게임, ₩5,000)
-  📋 근거: 마이페이지 구매 내역 확인됨
   ✨ 근거: 구매 승인 완료 및 번호 조합 매핑 완료
-💾 구매 정보가 저장되었습니다: /home/runner/work/zirotto/zirotto/data/purchased_lotto.json (1243회, 5게임)
+💾 구매 정보가 저장되었습니다: /home/runner/work/zirotto/zirotto/data/purchased_lotto.json (1244회, 5게임)
 
 📋 구매한 번호 조합:
-  [A] 🌌 우주 황금 밸런스: 08 17 22 24 36 39
-  [B] 🔥 역대 최빈출 집중: 01 10 24 27 34 37
-  [C] ⚡ 주기 반등 콜드 조합: 16 21 23 26 27 32
-  [D] 📐 수학적 황금비 조화: 02 10 24 31 32 45
-  [E] 🍀 카오스 우주 에너지: 14 21 23 28 31 32
+  [A] 🌌 우주 황금 밸런스: 01 16 27 32 34 41
+  [B] 🔥 역대 최빈출 집중: 01 06 33 34 43 45
+  [C] ⚡ 주기 반등 콜드 조합: 09 21 23 28 34 43
+  [D] 📐 수학적 황금비 조화: 02 03 13 26 27 42
+  [E] 🍀 카오스 우주 에너지: 01 14 17 20 27 35
 📨 텔레그램 메시지 전송 성공!
 ✅ 로또 6/45 구매 완료! (5게임, ₩5,000)
 
@@ -152,76 +213,21 @@ Call log:
 💰 구매 완료 후 최종 잔액 확인 중...
 ==================================================
 🔍 마이페이지로 이동 중...
-⚠️ 잔액 조회 실패: Page.goto: Timeout 60000ms exceeded.
-Call log:
-  - navigating to "https://www.dhlottery.co.kr/mypage/home", waiting until "domcontentloaded"
-
-Starting login process...
-🔗 로그인 페이지 접속 시도: https://www.dhlottery.co.kr/login
-⚠️ https://www.dhlottery.co.kr/login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-🔗 로그인 페이지 접속 시도: https://www.dhlottery.co.kr/user.do?method=login
-⚠️ https://www.dhlottery.co.kr/user.do?method=login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-🔗 로그인 페이지 접속 시도: https://dhlottery.co.kr/user.do?method=login
-⚠️ https://dhlottery.co.kr/user.do?method=login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-⚠️ 직접 URL 접속 재시도 (domcontentloaded)...
-❌ 로그인 시도 실패: Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-
-⏳ 5 초 후 재시도...
-🔄 로그인 재시도 1/1
-Starting login process...
-🔗 로그인 페이지 접속 시도: https://www.dhlottery.co.kr/login
-⚠️ https://www.dhlottery.co.kr/login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-🔗 로그인 페이지 접속 시도: https://www.dhlottery.co.kr/user.do?method=login
-⚠️ https://www.dhlottery.co.kr/user.do?method=login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-🔗 로그인 페이지 접속 시도: https://dhlottery.co.kr/user.do?method=login
-⚠️ https://dhlottery.co.kr/user.do?method=login 접속 지연 (Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-), 다음 주소 시도...
-⚠️ 직접 URL 접속 재시도 (domcontentloaded)...
-❌ 로그인 시도 실패: Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-
-❌ 모든 로그인 시도 실패
-⚠️ 재로그인 실패: ❌ 로그인 실패 (최대 재시도 횟수 초과): Page.wait_for_selector: Timeout 20000ms exceeded.
-Call log:
-  - waiting for locator("#inpUserId") to be visible
-
-🔄 잔액 조회 재시도 2/3
-🔍 마이페이지로 이동 중...
 ⏳ 페이지 로딩 대기 중...
 📸 스크린샷 저장: debug_mypage.png
 📄 HTML 저장: debug_mypage.html
 📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
 🔍 잔액 요소를 찾는 중...
 🔍 시도 중: #totalAmt
-✅ 찾음: #totalAmt = '5,000'
-💰 예치금 텍스트: 5,000
+✅ 찾음: #totalAmt = '20,000'
+💰 예치금 텍스트: 20,000
 🔍 시도 중: #divCrntEntrsAmt
-✅ 찾음: #divCrntEntrsAmt = '5,000
+✅ 찾음: #divCrntEntrsAmt = '20,000
 원'
-🛒 구매가능 텍스트: 5,000
+🛒 구매가능 텍스트: 20,000
 원
-💰 최종 예치금 잔액: 5,000원
-🛒 최종 구매가능: 5,000원
+💰 최종 예치금 잔액: 20,000원
+🛒 최종 구매가능: 20,000원
 📨 텔레그램 메시지 전송 성공!
 
 ==================================================
