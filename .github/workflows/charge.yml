@@ -1,0 +1,65 @@
+name: Deposit Charge (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      amount:
+        description: '충전할 금액 (원)'
+        required: true
+        default: '30000'
+        type: choice
+        options:
+          - '5000'
+          - '10000'
+          - '20000'
+          - '30000'
+          - '50000'
+          - '100000'
+
+jobs:
+  charge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9'
+        cache: 'pip'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-kor
+
+    - name: Install Python Dependencies
+      run: |
+        pip install -r requirements.txt
+        playwright install chromium
+        playwright install-deps chromium
+
+    - name: Run Deposit Charge
+      env:
+        PYTHONPATH: src
+        USER_ID: ${{ secrets.USER_ID }}
+        PASSWD: ${{ secrets.PASSWD }}
+        CHARGE_PIN: ${{ secrets.CHARGE_PIN }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: |
+        python src/charge.py ${{ github.event.inputs.amount }}
+
+    - name: Upload Debug Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: charge-debug-artifacts
+        path: |
+          debug_*.png
+          debug_*.html
+        if-no-files-found: ignore

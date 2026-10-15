@@ -153,7 +153,8 @@ def run_all_tasks(playwright: Playwright) -> None:
         auto_games = _safe_int_env("AUTO_GAMES", 5)
         manual_games = _safe_manual_games_count()
         lotto645_amount = (auto_games + manual_games) * 1000
-        CHARGE_AMOUNT = 20000
+        CHARGE_AMOUNT = _safe_int_env("CHARGE_AMOUNT", 30000)
+        CHARGE_THRESHOLD = _safe_int_env("CHARGE_THRESHOLD", 10000)
 
         # 중복 구매 여부 사전 점검
         from lotto720 import get_current_pension720_round, get_purchased_pension720_from_file
@@ -187,9 +188,11 @@ def run_all_tasks(playwright: Playwright) -> None:
             print(f"💰 현재 예치금 잔액: {balance_info['deposit_balance']:,}원")
             print(f"🛒 현재 구매가능 금액: {balance_info['available_amount']:,}원")
             print(f"🎯 금주 잔여 구매 필요 금액: ₩{MIN_REQUIRED_NEXT:,} (연금 ₩{0 if pension_already_bought else lotto720_amount:,} + 로또 ₩{0 if lotto645_already_bought else lotto645_amount:,})")
+            print(f"⚙️ 자동충전 기준: 잔액 ₩{CHARGE_THRESHOLD:,} 미만 또는 구매 필요 금액 미만 시 ₩{CHARGE_AMOUNT:,} 충전")
 
-            if MIN_REQUIRED_NEXT > 0 and balance_info['available_amount'] < MIN_REQUIRED_NEXT:
-                print(f"💳 잔액 부족 (보유: ₩{balance_info['available_amount']:,} < 필요: ₩{MIN_REQUIRED_NEXT:,}). ₩{CHARGE_AMOUNT:,} 충전 진행...")
+            trigger_threshold = max(MIN_REQUIRED_NEXT, CHARGE_THRESHOLD)
+            if balance_info['available_amount'] < trigger_threshold:
+                print(f"💳 잔액 부족 (보유: ₩{balance_info['available_amount']:,} < 기준: ₩{trigger_threshold:,}). ₩{CHARGE_AMOUNT:,} 충전 진행...")
                 try:
                     success = charge_balance(page, CHARGE_AMOUNT)
                     notify_charge(CHARGE_AMOUNT, bool(success))
