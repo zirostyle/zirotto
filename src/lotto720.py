@@ -693,10 +693,10 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
     mobile_page = mobile_context.new_page()
 
     GAME_URLS = [
-        "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
-        "http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
         "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
         "http://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
+        "http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp",
     ]
     connected = False
     for gurl in GAME_URLS:
@@ -705,6 +705,10 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
             mobile_page.goto(gurl, timeout=20000, wait_until="commit")
             time.sleep(3)
             mobile_page.locator("body").first.wait_for(state="attached", timeout=10000)
+            body_txt = mobile_page.locator("body").inner_text()
+            if "404" in body_txt or "페이지를 찾을 수 없습니다" in body_txt:
+                print(f"  ⚠️ 404 에러 페이지 감지: {gurl}")
+                continue
             if "/login" in mobile_page.url or "method=login" in mobile_page.url:
                 print("  ⚠️ 세션 만료 감지 -> 재로그인 후 재시도...")
                 from login import login
