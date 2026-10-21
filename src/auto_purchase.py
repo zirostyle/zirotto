@@ -87,6 +87,7 @@ def _get_balance_resilient(page, attempts: int = 3):
     잔액 조회가 실패할 때 재로그인까지 포함해 재시도합니다.
     """
     import time
+    from login import handle_password_notice_if_present
 
     last_error = None
     for i in range(attempts):
@@ -101,6 +102,7 @@ def _get_balance_resilient(page, attempts: int = 3):
                 # 세션/도메인 꼬임 복구
                 page.goto("https://www.dhlottery.co.kr/main", timeout=60000, wait_until="domcontentloaded")
                 time.sleep(1)
+                handle_password_notice_if_present(page)
                 login(page, max_retries=2)
             except Exception as relogin_error:
                 print(f"⚠️ 재로그인 실패: {relogin_error}")

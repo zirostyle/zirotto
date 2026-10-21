@@ -85,6 +85,18 @@ def get_balance(page: Page) -> dict:
     current_url = page.url
     print(f"📍 현재 URL: {current_url}")
     
+    if "ExpryPswdNoti" in current_url or "login" in current_url.lower():
+        print("⚠️ 비정상 URL 감지 (비밀번호 안내 또는 로그인 튕김), 복구 시도...")
+        from login import handle_password_notice_if_present
+        handle_password_notice_if_present(page)
+        try:
+            page.goto("https://www.dhlottery.co.kr/mypage/home", timeout=60000, wait_until="domcontentloaded")
+            time.sleep(3)
+            current_url = page.url
+            print(f"📍 복구 후 URL: {current_url}")
+        except Exception as nav_e:
+            print(f"⚠️ 복구 중 마이페이지 이동 오류: {nav_e}")
+    
     # Try multiple selectors for deposit balance
     deposit_selectors = [
         "#totalAmt",

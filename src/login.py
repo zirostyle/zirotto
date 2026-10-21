@@ -36,6 +36,92 @@ USER_ID = environ.get('USER_ID')
 PASSWD = environ.get('PASSWD')
 
 
+def handle_password_notice_if_present(page: Page) -> bool:
+    """
+    동행복권 비밀번호 만료/변경 안내 페이지(ExpryPswdNoti 등)가 나타났을 경우
+    '다음에 변경하기' 또는 '90일 후 변경' 등을 클릭하여 세션을 정상 유지합니다.
+    """
+    current_url = page.url
+    if not ("ExpryPswdNoti" in current_url or "expry" in current_url.lower() or "pswd" in current_url.lower()):
+        return False
+
+    print("⚠️ 비밀번호 변경 안내 페이지(ExpryPswdNoti) 감지! '다음에 변경' 처리 시도...")
+    page.screenshot(path="debug_password_notice.png")
+    try:
+        with open("debug_password_notice.html", "w", encoding="utf-8") as f:
+            f.write(page.content())
+        print("📄 debug_password_notice.html 저장 완료")
+    except Exception:
+        pass
+
+    dismiss_selectors = [
+        "text=/다음에/",
+        "text=/90일/",
+        "text=/나중에/",
+        "text=/연장/",
+        "text=/취소/",
+        "button:has-text('다음에')",
+        "a:has-text('다음에')",
+        "button:has-text('90일')",
+        "a:has-text('90일')",
+        "button:has-text('나중에')",
+        "a:has-text('나중에')",
+        "button:has-text('취소')",
+        "a:has-text('취소')",
+        "button:has-text('확인')",
+        "input[value*='다음']",
+        "input[value*='90일']",
+        "input[value*='나중']",
+        "input[value*='취소']",
+        "input[value*='확인']",
+        "#btnNext",
+        "#btnCancel",
+        ".btn_common:has-text('다음')",
+        "[onclick*='next']",
+        "[onclick*='later']",
+        "[onclick*='defer']",
+        "[onclick*='postpone']",
+        "[onclick*='cancel']"
+    ]
+    dismissed = False
+    for sel in dismiss_selectors:
+        try:
+            btn = page.locator(sel)
+            if btn.count() > 0 and btn.first.is_visible(timeout=1000):
+                print(f"👉 비밀번호 변경 연기 버튼 클릭: {sel}")
+                btn.first.click(timeout=3000)
+                dismissed = True
+                time.sleep(2)
+                break
+        except Exception:
+            pass
+
+    if not dismissed:
+        try:
+            all_buttons = page.locator("button, a.btn, a[class*='btn'], input[type='button'], a")
+            for i in range(min(all_buttons.count(), 20)):
+                txt = all_buttons.nth(i).inner_text(timeout=500).strip()
+                if any(k in txt for k in ["다음", "90일", "나중", "취소", "연장"]):
+                    print(f"👉 버튼 텍스트 매칭 클릭: '{txt}'")
+                    all_buttons.nth(i).click(timeout=3000)
+                    dismissed = True
+                    time.sleep(2)
+                    break
+        except Exception as e:
+            print(f"⚠️ 버튼 텍스트 탐색 중 오류: {e}")
+
+    # 페이지 이동 확인 및 /main으로 전환
+    if "ExpryPswdNoti" in page.url or "pswd" in page.url.lower():
+        print("🌐 메인 페이지(/main)로 명시적 이동...")
+        try:
+            page.goto("https://www.dhlottery.co.kr/main", timeout=30000, wait_until="domcontentloaded")
+            time.sleep(2)
+        except Exception as e:
+            print(f"⚠️ 메인 이동 실패: {e}")
+
+    return True
+
+
 def login(page: Page, max_retries: int = 3) -> None:
     """
     동행복권 사이트에 로그인합니다.
@@ -117,6 +203,10 @@ def login(page: Page, max_retries: int = 3) -> None:
             current_url = page.url
             print(f"📍 로그인 후 URL: {current_url}")
             
+            # Check if password change notice (ExpryPswdNoti) appeared
+            handle_password_notice_if_present(page)
+            current_url = page.url
+            
             # Check if still on login page
             if "/login" in current_url:
                 # Look for error messages
@@ -177,6 +267,23 @@ def login(page: Page, max_retries: int = 3) -> None:
                 except:
                     pass
             
+            # If not yet confirmed or still not on normal page, ensure we navigate to main
+            if not logged_in or "ExpryPswdNoti" in page.url:
+                try:
+                    page.goto("https://www.dhlottery.co.kr/main", timeout=30000, wait_until="domcontentloaded")
+                    time.sleep(2)
+                    for indicator in login_indicators:
+                        try:
+                            element = page.locator(indicator)
+                            if element.count() > 0:
+                                logged_in = True
+                                print(f"✅ 메인 페이지에서 로그인 확인됨: {indicator}")
+                                break
+                        except Exception:
+                            pass
+                except Exception as e:
+                    print(f"⚠️ 메인 이동 확인 중 오류: {e}")
+
             if not logged_in:
                 raise Exception("❌ 로그인 검증 실패: 로그인 상태를 확인할 수 없습니다.")
             
