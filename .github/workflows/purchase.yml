@@ -5,6 +5,8 @@ on:
   schedule:
     # 매주 월요일 오전 7:00 KST (일요일 22:00 UTC)
     - cron: '0 22 * * 0'
+    # 백업: 매주 월요일 오전 9:00 KST (월요일 00:00 UTC)
+    - cron: '0 0 * * 1'
 
 concurrency:
   group: lotto-purchase-${{ github.ref }}
@@ -74,7 +76,17 @@ jobs:
         LOTTO720_AMOUNT: ${{ secrets.LOTTO720_AMOUNT || '10000' }}
       run: |
         chmod +x scripts/purchase.sh
-        bash scripts/purchase.sh
+        for attempt in 1 2 3; do
+          echo "🚀 구매 워크플로 실행 시도 $attempt/3..."
+          if bash scripts/purchase.sh; then
+            echo "✅ 구매 워크플로 성공!"
+            exit 0
+          fi
+          echo "⚠️ 시도 $attempt 실패. 30초 후 재시도합니다..."
+          sleep 30
+        done
+        echo "❌ 3회 재시도 모두 실패"
+        exit 1
 
     - name: Build Dashboard Data
       if: always()

@@ -122,7 +122,7 @@ def handle_password_notice_if_present(page: Page) -> bool:
     return True
 
 
-def login(page: Page, max_retries: int = 3) -> None:
+def login(page: Page, max_retries: int = 4) -> None:
     """
     동행복권 사이트에 로그인합니다.
     
@@ -138,12 +138,15 @@ def login(page: Page, max_retries: int = 3) -> None:
         raise ValueError("❌ USER_ID or PASSWD not found in environment variables.")
     
     last_error = None
+    page.set_default_navigation_timeout(60000)
+    page.set_default_timeout(45000)
     
     for retry in range(max_retries):
         try:
             if retry > 0:
-                print(f"🔄 로그인 재시도 {retry}/{max_retries-1}")
-                time.sleep(5)  # Wait before retry
+                wait_time = 10 * retry
+                print(f"🔄 로그인 재시도 {retry}/{max_retries-1} ({wait_time}초 대기 후 진행)...")
+                time.sleep(wait_time)
             
             print('Starting login process...')
             
@@ -294,8 +297,9 @@ def login(page: Page, max_retries: int = 3) -> None:
             last_error = e
             print(f"❌ 로그인 시도 실패: {e}")
             if retry < max_retries - 1:
-                print(f"⏳ {5} 초 후 재시도...")
-                time.sleep(5)
+                wait_time = 10 * (retry + 1)
+                print(f"⏳ {wait_time} 초 후 재시도...")
+                time.sleep(wait_time)
             else:
                 print("❌ 모든 로그인 시도 실패")
     
