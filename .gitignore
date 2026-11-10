@@ -44,3 +44,8 @@ Thumbs.db
 .pytest_cache/
 test-results/
 playwright-report/
+debug_*
+*.png
+*.html
+*.log
+
