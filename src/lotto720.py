@@ -447,43 +447,86 @@ def _purchase_once(page: Page, round_num: int) -> dict:
 
     # 2. '번호 선택하기' 클릭
     print("  👉 [1/5] '번호 선택하기' 클릭...")
-    _click_first_available(
-        page,
-        [
-            "a.btn_gray_st1.large.full:has-text('번호 선택하기')",
-            "a:has-text('+ 번호 선택하기')",
-            "a:has-text('번호 선택하기')",
-            "button:has-text('번호 선택하기')",
-            "[onclick*='selNumberPopup']",
-        ],
-        "번호 선택하기 버튼",
-        timeout=15000,
-    )
+    opened = False
+    try:
+        page.evaluate("if (typeof selNumberPopup === 'function') { selNumberPopup(); }")
+        page.wait_for_selector("#popup4", state="visible", timeout=4000)
+        opened = True
+    except Exception:
+        pass
 
-    page.wait_for_selector("#popup4", state="visible", timeout=10000)
+    if not opened:
+        try:
+            _click_first_available(
+                page,
+                [
+                    "a:has-text('+ 번호 선택하기')",
+                    "a.btn_gray_st1:has-text('번호 선택하기')",
+                    "a:has-text('번호 선택하기')",
+                    "[onclick*='selNumberPopup']",
+                    "button:has-text('번호 선택하기')",
+                ],
+                "번호 선택하기 버튼",
+                timeout=10000,
+                force=True
+            )
+            page.wait_for_selector("#popup4", state="visible", timeout=10000)
+            opened = True
+        except Exception as open_err:
+            print(f"  ⚠️ 버튼 클릭으로 팝업 오픈 실패, JS selNumberPopup 재시도: {open_err}")
+            page.evaluate("if (typeof selNumberPopup === 'function') { selNumberPopup(); }")
+            page.wait_for_selector("#popup4", state="visible", timeout=10000)
+
     time.sleep(1)
 
     # 3. '모든 조' 선택 및 '자동번호' 클릭
     print("  👉 [2/5] '모든 조' 확인 및 '자동번호' 생성...")
     try:
-        all_jo = page.locator("#popup4 span.group.all, #popup4 .selGroup, #popup4 .group.all, #popup4 a:has-text('모든 조')").first
-        if all_jo.is_visible(timeout=1500):
-            all_jo.click()
+        page.evaluate("""() => {
+            const radio = document.querySelector('#group_sel0');
+            if (radio) { radio.checked = true; }
+            const jogroups = document.querySelectorAll('.jogroup');
+            if (jogroups.length > 0) { jogroups[0].click(); }
+        }""")
+        time.sleep(0.5)
+    except Exception:
+        pass
+
+    try:
+        all_jo = page.locator("#group_sel0, label[for='group_sel0'], label:has-text('모든조'), span.group.all, .selGroup, a:has-text('모든 조')").first
+        if all_jo.is_visible(timeout=1000):
+            all_jo.click(timeout=1000, force=True)
             time.sleep(0.3)
     except Exception:
         pass
 
-    _click_first_available(
-        page,
-        [
-            "#popup4 a.btn_wht.xsmall:has-text('자동번호')",
-            "#popup4 a:has-text('자동번호')",
-            "#popup4 button:has-text('자동번호')",
-            "#popup4 [onclick*='doAuto']",
-        ],
-        "자동번호 버튼",
-        timeout=5000,
-    )
+    auto_done = False
+    try:
+        page.evaluate("if (typeof doAuto === 'function') { doAuto(); }")
+        auto_done = True
+        time.sleep(0.5)
+    except Exception as e:
+        print(f"  ⚠️ JS doAuto 직접 실행 실패: {e}")
+
+    if not auto_done:
+        try:
+            _click_first_available(
+                page,
+                [
+                    "#popup4 a.btn_wht.xsmall:has-text('자동번호')",
+                    "#popup4 a:has-text('자동번호')",
+                    "a:has-text('자동번호')",
+                    "#popup4 [onclick*='doAuto']",
+                    "[onclick*='doAuto']",
+                    "text='자동번호'",
+                ],
+                "자동번호 버튼",
+                timeout=5000,
+                force=True
+            )
+            auto_done = True
+        except Exception as click_err:
+            print(f"  ⚠️ 자동번호 버튼 클릭 실패: {click_err}")
 
     # 번호 생성 대기
     try:
@@ -506,17 +549,34 @@ def _purchase_once(page: Page, round_num: int) -> dict:
 
     # 4. '선택완료' 클릭
     print("  👉 [3/5] '선택완료' 확정...")
-    _click_first_available(
-        page,
-        [
-            "#popup4 a.btn_blue.full.large:has-text('선택완료')",
-            "#popup4 a:has-text('선택완료')",
-            "#popup4 button:has-text('선택완료')",
-            "#popup4 [onclick*='doVerify']",
-        ],
-        "선택완료 버튼",
-        timeout=5000,
-    )
+    verify_done = False
+    try:
+        page.evaluate("if (typeof doVerify === 'function') { doVerify(); }")
+        verify_done = True
+        time.sleep(0.5)
+    except Exception as e:
+        print(f"  ⚠️ JS doVerify 직접 실행 실패: {e}")
+
+    if not verify_done:
+        try:
+            _click_first_available(
+                page,
+                [
+                    "#popup4 a.btn_blue.full.large:has-text('선택완료')",
+                    "#popup4 a:has-text('선택완료')",
+                    "a:has-text('선택완료')",
+                    "#popup4 [onclick*='doVerify']",
+                    "[onclick*='doVerify']",
+                    "text='선택완료'",
+                ],
+                "선택완료 버튼",
+                timeout=5000,
+                force=True
+            )
+            verify_done = True
+        except Exception as v_err:
+            print(f"  ⚠️ 선택완료 버튼 클릭 실패: {v_err}")
+
     time.sleep(0.8)
     try:
         page.wait_for_selector("#popup4", state="hidden", timeout=10000)
@@ -691,6 +751,7 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
         }
     )
     mobile_page = mobile_context.new_page()
+    mobile_page.on("dialog", lambda dialog: dialog.accept())
 
     GAME_URLS = [
         "https://el.dhlottery.co.kr/game_mobile/pension720/game.jsp",
@@ -702,7 +763,7 @@ def purchase_lotto720(page: Page, target_amount: int = None, send_notification: 
     for gurl in GAME_URLS:
         try:
             print(f"  연금복권 모바일 구매 페이지 접속 시도: {gurl}")
-            mobile_page.goto(gurl, timeout=20000, wait_until="commit")
+            mobile_page.goto(gurl, timeout=45000, wait_until="commit")
             time.sleep(3)
             mobile_page.locator("body").first.wait_for(state="attached", timeout=10000)
             body_txt = mobile_page.locator("body").inner_text()
