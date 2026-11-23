@@ -56,18 +56,18 @@ Starting login process...
 📍 현재 URL: https://www.dhlottery.co.kr/mypage/home
 🔍 잔액 요소를 찾는 중...
 🔍 시도 중: #totalAmt
-✅ 찾음: #totalAmt = '25,000'
-💰 예치금 텍스트: 25,000
+✅ 찾음: #totalAmt = '20,000'
+💰 예치금 텍스트: 20,000
 🔍 시도 중: #divCrntEntrsAmt
-✅ 찾음: #divCrntEntrsAmt = '25,000
+✅ 찾음: #divCrntEntrsAmt = '20,000
 원'
-🛒 구매가능 텍스트: 25,000
+🛒 구매가능 텍스트: 20,000
 원
-💰 현재 예치금 잔액: 25,000원
-🛒 현재 구매가능 금액: 25,000원
-🎯 금주 잔여 구매 필요 금액: ₩15,000 (연금 ₩10,000 + 로또 ₩5,000)
+💰 현재 예치금 잔액: 20,000원
+🛒 현재 구매가능 금액: 20,000원
+🎯 금주 잔여 구매 필요 금액: ₩10,000 (연금 ₩10,000 + 로또 ₩0)
 ⚙️ 자동충전 기준: 잔액 ₩10,000 미만 또는 구매 필요 금액 미만 시 ₩30,000 충전
-✅ 구매 잔액 충분: ₩25,000
+✅ 구매 잔액 충분: ₩20,000
 
 ==================================================
 🎟️ 연금복권 720+ 구매 중... (목표: ₩10,000)
@@ -94,68 +94,15 @@ Call log:
   - navigating to "http://m.dhlottery.co.kr/game_mobile/pension720/game.jsp", waiting until "commit"
 
   📱 모바일 메인 페이지를 통한 진입 시도...
-  ⚠️ 모바일 메인 경유 진입 실패: Page.goto: Navigation to "https://m.dhlottery.co.kr/" is interrupted by another navigation to "https://m.dhlottery.co.kr/game_mobile/pension720/game.jsp"
+  ⚠️ 모바일 메인 경유 진입 실패: Page.goto: Timeout 20000ms exceeded.
 Call log:
   - navigating to "https://m.dhlottery.co.kr/", waiting until "commit"
 
 ❌ 연금복권 720+ 구매 실패: 연금복권 720+ 구매 페이지 접속 실패
 
 ==================================================
-🎫 로또 6/45 제 1252회 구매 중...
+⏭️ 로또 6/45 제 1252회는 이미 5게임 구매 완료되어 중복 구매를 건너뜁니다.
 ==================================================
-
-🔮 우주의 기운 최고 당첨률 5개 번호 조합 생성 중...
-  ✨ 우주의 기운 5대 특화 전략 조합 생성 완료:
-  [A] 🌌 우주 황금 밸런스: 01 18 20 21 37 45
-  [B] 🔥 역대 최빈출 집중: 01 17 22 24 27 36
-  [C] ⚡ 주기 반등 콜드 조합: 01 08 19 24 25 42
-  [D] 📐 수학적 황금비 조화: 03 18 20 37 39 42
-  [E] 🍀 카오스 우주 에너지: 11 12 30 34 35 40
-⏰ 현재 시간: 2026-11-23 11:07:30 (KST, 월요일)
-✅ 구매 가능 시간입니다!
-  로또645 페이지 이동 중...
-  페이지 로드 완료
-✅ 로또 6/45 페이지 로드 완료
-🎯 로또 6/45 구매 대상 회차: 1252회
-
-수동 번호 선택 중... (5게임)
-  게임 [A] 🌌 우주 황금 밸런스: 01 18 20 21 37 45
-  ✅ [A] 추가 완료
-  게임 [B] 🔥 역대 최빈출 집중: 01 17 22 24 27 36
-  ✅ [B] 추가 완료
-  게임 [C] ⚡ 주기 반등 콜드 조합: 01 08 19 24 25 42
-  ✅ [C] 추가 완료
-  게임 [D] 📐 수학적 황금비 조화: 03 18 20 37 39 42
-  ✅ [D] 추가 완료
-  게임 [E] 🍀 카오스 우주 에너지: 11 12 30 34 35 40
-  ✅ [E] 추가 완료
-✅ 구매 전 번호 추출 성공: 5세트
-🛒 구매 버튼 클릭...
-✅ 구매 확인 팝업에서 확인 클릭...
-⏳ 구매 처리 대기 중...
-📸 구매 후 스크린샷 저장: debug_lotto645_after_purchase.png
-📄 구매 후 HTML 저장: debug_lotto645_after_purchase.html
-ℹ️ 구매 완료 레이어 미감지 -> 마이페이지 구매 내역에서 검증 진행
-
-🔍 구매 내역 최종 검증 및 번호 추출 중...
-⚠️ 구매 내역 페이지 확인 중 특이사항: Page.goto: Timeout 30000ms exceeded.
-Call log:
-  - navigating to "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", waiting until "commit"
-
-
-✅ Lotto 6/45: 구매 완료! (5게임, ₩5,000)
-  📋 근거: 마이페이지 구매 내역 확인됨
-  ✨ 근거: 구매 승인 완료 및 번호 조합 매핑 완료
-💾 구매 정보가 저장되었습니다: /home/runner/work/zirotto/zirotto/data/purchased_lotto.json (1252회, 5게임)
-
-📋 구매한 번호 조합:
-  [A] 🌌 우주 황금 밸런스: 01 18 20 21 37 45
-  [B] 🔥 역대 최빈출 집중: 01 17 22 24 27 36
-  [C] ⚡ 주기 반등 콜드 조합: 01 08 19 24 25 42
-  [D] 📐 수학적 황금비 조화: 03 18 20 37 39 42
-  [E] 🍀 카오스 우주 에너지: 11 12 30 34 35 40
-📨 텔레그램 메시지 전송 성공!
-✅ 로또 6/45 구매 완료! (5게임, ₩5,000)
 
 ==================================================
 💰 구매 완료 후 최종 잔액 확인 중...
@@ -165,21 +112,11 @@ Call log:
 Call log:
   - navigating to "https://www.dhlottery.co.kr/mypage/home", waiting until "domcontentloaded"
 
-⚠️ 재로그인 실패: Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.dhlottery.co.kr/main
+⚠️ 재로그인 실패: Page.goto: Timeout 60000ms exceeded.
 Call log:
   - navigating to "https://www.dhlottery.co.kr/main", waiting until "domcontentloaded"
 
 🔄 잔액 조회 재시도 2/3
-🔍 마이페이지로 이동 중...
-⚠️ 잔액 조회 실패: Page.goto: net::ERR_CONNECTION_TIMED_OUT at https://www.dhlottery.co.kr/mypage/home
-Call log:
-  - navigating to "https://www.dhlottery.co.kr/mypage/home", waiting until "domcontentloaded"
-
-⚠️ 재로그인 실패: Page.goto: Navigation to "https://www.dhlottery.co.kr/main" is interrupted by another navigation to "chrome-error://chromewebdata/"
-Call log:
-  - navigating to "https://www.dhlottery.co.kr/main", waiting until "domcontentloaded"
-
-🔄 잔액 조회 재시도 3/3
 🔍 마이페이지로 이동 중...
 ⏳ 페이지 로딩 대기 중...
 📸 스크린샷 저장: debug_mypage.png
